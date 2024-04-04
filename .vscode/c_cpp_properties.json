@@ -1,0 +1,116 @@
+{
+    "configurations": [
+        {
+            "name": "linux-gcc-arm64",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/include/aarch64-linux-gnu",
+                "/usr/include/aarch64-linux-gnu/c++/12",
+                "/usr/include/aarch64-linux-gnu/c++/12/bits",
+                "/usr/include/c++/12",
+                "/usr/include/c++/12/bits"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "linux",
+                "LINUX",
+                "AMD64"
+            ],
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-arm64",
+            "macFrameworkPath": [],
+            "mergeConfigurations": false,
+            "compilerPath": "/usr/bin/g++",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/**"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        },
+        {
+            "name": "mingw-w64-ucrt-x86_64 (C, GCC 15.1.0)",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:\\msys64\\ucrt64\\include\\**"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "WIN32",
+                "AMD64"
+            ],
+            "cStandard":"gnu23",
+            "cppStandard":"gnu++17",
+            "intelliSenseMode": "windows-gcc-x64",
+            "macFrameworkPath": [],
+            "mergeConfigurations": false,
+            "compilerPath": "C:\\msys64\\ucrt64\\bin\\gcc.exe",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        },
+        {
+            "name": "mingw-w64-ucrt-x86_64 (C++, GCC 14.2.0)",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:\\msys64\\ucrt64\\include",
+                "C:\\msys64\\ucrt64\\include\\c++\\14.2.0"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "WIN32",
+                "AMD64"
+            ],
+            "cStandard": "gnu17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "windows-gcc-x64",
+            "macFrameworkPath": [],
+            "mergeConfigurations": false,
+            "compilerPath": "C:\\msys64\\ucrt64\\bin\\g++.exe",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/**"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        },
+        {
+            "name": "mingw-w64-ucrt-x86_64 (C++, GCC 15.1.0)",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:\\msys64\\ucrt64\\include",
+                "C:\\msys64\\ucrt64\\include\\c++\\15.1.0"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "WIN32",
+                "AMD64"
+            ],
+            "cStandard":"gnu23",
+            "cppStandard":"gnu++17",
+            "intelliSenseMode": "windows-gcc-x64",
+            "macFrameworkPath": [],
+            "mergeConfigurations": false,
+            "compilerPath": "C:\\msys64\\ucrt64\\bin\\g++.exe",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/**"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}
