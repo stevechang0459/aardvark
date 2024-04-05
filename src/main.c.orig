@@ -106,7 +106,8 @@ int main(int argc, char *argv[])
 
 		break;
 	}
-	case AA_FUNC_IDX_OPEN: {
+	case AA_FUNC_IDX_OPEN:
+	{
 		Aardvark handle;
 		int port = atoi(argv[2]);
 
@@ -127,7 +128,8 @@ int main(int argc, char *argv[])
 		aa_target_power(handle, AA_TARGET_POWER_BOTH);
 		break;
 	}
-	case AA_FUNC_IDX_CLOSE: {
+	case AA_FUNC_IDX_CLOSE:
+	{
 		Aardvark handle;
 		int port = atoi(argv[2]);
 
@@ -219,7 +221,8 @@ int main(int argc, char *argv[])
 	case AA_FUNC_IDX_SMB_MASTER_BLOCK_READ:
 		break;
 
-	case AA_FUNC_IDX_SMB_SLAVE_POLL: {
+	case AA_FUNC_IDX_SMB_SLAVE_POLL:
+	{
 		int ret = 0;
 		int port = atoi(argv[2]);
 		u8 addr = (u8)strtol(argv[3], 0, 0);

@@ -34,7 +34,7 @@
 
 static u8 data_in[BUFFER_SIZE];
 
-static void dump(Aardvark handle, int timeout_ms)
+static void i2c_slave_poll(Aardvark handle, int timeout_ms)
 {
 	int trans_num = 0;
 	int idle_num = 0;
@@ -74,7 +74,7 @@ static void dump(Aardvark handle, int timeout_ms)
 
 			// Dump the data to the screen
 			printf("\n*** Transaction #%02d\n", trans_num);
-			printf("Data read from master:");
+			printf("Data read from I2C master:");
 			for (i = 0; i < num_bytes; ++i) {
 				if ((i & 0x0f) == 0) {
 					printf("\n%04x:  ", i);
@@ -98,28 +98,29 @@ static void dump(Aardvark handle, int timeout_ms)
 
 			// Print status information to the screen
 			printf("*** Transaction #%02d\n", trans_num);
-			printf("Number of bytes written to master: %04d\n", num_bytes);
+			printf("Number of bytes written to I2C master: %04d\n", num_bytes);
 
 			printf("\n");
-		} else {
-			++idle_num;
-			// printf("error: non-I2C asynchronous message is pending\n");
-			// return;
+		} else if (result == AA_ASYNC_SPI) {
+			printf("error: non-I2C asynchronous message is pending\n");
+			return;
 		}
-
 
 		// Use aa_async_poll to wait for the next transaction
 		result = aa_async_poll(handle, INTERVAL_TIMEOUT);
 		if (result == AA_ASYNC_NO_DATA) {
-			if (idle_num && ((idle_num % 10) == 0))
+			// If bus idle for more than 60 seconds, just break the loop.
+			if (idle_num && ((idle_num % 120) == 0)) {
+				printf("Bus is idle for more than 60 seconds.\n");
 				printf("No more data available from I2C master.\n");
-
-			// break;
+				break;
+			}
+			++idle_num;
 		}
 	}
 }
 
-int aa_i2c_slave(int port, u8 addr, int timeout_ms)
+int aa_i2c_slave_poll(int port, u8 addr, int timeout_ms)
 {
 	Aardvark handle;
 	u8 slave_resp[SLAVE_RESP_SIZE];
@@ -136,7 +137,7 @@ int aa_i2c_slave(int port, u8 addr, int timeout_ms)
 	// Ensure that the I2C subsystem is enabled
 	aa_configure(handle, AA_CONFIG_SPI_I2C);
 
-	// Disable the Aardvark adapter's power pins.
+	// Enable the Aardvark adapter's power pins.
 	// This command is only effective on v2.0 hardware or greater.
 	// The power pins on the v1.02 hardware are not enabled by default.
 	aa_target_power(handle, AA_TARGET_POWER_BOTH);
@@ -153,7 +154,12 @@ int aa_i2c_slave(int port, u8 addr, int timeout_ms)
 	aa_i2c_slave_enable(handle, addr, 0, 0);
 
 	// Watch the I2C port
-	dump(handle, timeout_ms);
+	i2c_slave_poll(handle, timeout_ms);
+
+	// Disable the Aardvark adapter's power pins.
+	// This command is only effective on v2.0 hardware or greater.
+	// The power pins on the v1.02 hardware are not enabled by default.
+	aa_target_power(handle, AA_TARGET_POWER_NONE);
 
 	// Disable the slave and close the device
 	aa_i2c_slave_disable(handle);
