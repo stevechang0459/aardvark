@@ -1,5 +1,5 @@
 # Aardvark
-Aardvark C Application Practice
+Aardvark I2C Host Adapter Application
 
 Format the source code with Linux coding style
 ---
