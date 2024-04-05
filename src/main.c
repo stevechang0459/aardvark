@@ -4,7 +4,9 @@
 
 typedef enum _aa_func_idx_e {
 	AA_FUNC_IDX_DETECT = 0,
-	AA_FUNC_IDX_I2C_MASTER_WRITE = 1,
+	AA_FUNC_IDX_OPEN = 1,
+	AA_FUNC_IDX_CLOSE,
+	AA_FUNC_IDX_I2C_MASTER_WRITE,
 	AA_FUNC_IDX_I2C_MASTER_READ,
 	AA_FUNC_IDX_I2C_MASTER_WRITE_FILE,
 	AA_FUNC_IDX_I2C_SLAVE_POLL,
@@ -21,6 +23,8 @@ typedef struct _aardvark_func_list_t {
 
 static const aardvark_func_list_t aa_func_list[] = {
 	{"detect", AA_FUNC_IDX_DETECT},
+	{"open", AA_FUNC_IDX_OPEN},
+	{"close", AA_FUNC_IDX_CLOSE},
 	{"i2c-write", AA_FUNC_IDX_I2C_MASTER_WRITE},
 	{"i2c-read", AA_FUNC_IDX_I2C_MASTER_READ},
 	{"i2c-slave-poll", AA_FUNC_IDX_I2C_SLAVE_POLL},
@@ -94,13 +98,16 @@ int main(int argc, char *argv[])
 
 	switch (func_idx) {
 	case AA_FUNC_IDX_DETECT: {
-		extern int aa_detect(void);
 		int ret = aa_detect();
 		printf("aa_detect: %d\n", ret);
 		printf("aa_status_string: %s\n", aa_status_string(ret));
 
+		break;
+	}
+	case AA_FUNC_IDX_OPEN:
+	{
 		Aardvark handle;
-		int port  = 0;
+		int port = atoi(argv[2]);
 
 		// Open the device
 		handle = aa_open(port);
@@ -110,8 +117,41 @@ int main(int argc, char *argv[])
 			printf("Error code = %d\n", handle);
 			return 1;
 		} else {
-			printf("aa_open: success\n");
+			printf("aa_open success\n");
 		}
+
+		// Disable the Aardvark adapter's power pins.
+		// This command is only effective on v2.0 hardware or greater.
+		// The power pins on the v1.02 hardware are not enabled by default.
+		aa_target_power(handle, AA_TARGET_POWER_BOTH);
+		break;
+	}
+	case AA_FUNC_IDX_CLOSE:
+	{
+		Aardvark handle;
+		int port = atoi(argv[2]);
+
+		// Open the device
+		handle = aa_open(port);
+		if (handle <= 0) {
+			printf("Unable to open Aardvark device on port %d\n", port);
+			printf("Error code = %d\n", handle);
+			return 1;
+		}
+
+		// Disable the Aardvark adapter's power pins.
+		// This command is only effective on v2.0 hardware or greater.
+		// The power pins on the v1.02 hardware are not enabled by default.
+		aa_target_power(handle, AA_TARGET_POWER_NONE);
+
+		// Disable the slave and close the device
+		aa_i2c_slave_disable(handle);
+
+		int dev_cnt = aa_close(handle);
+		if (!dev_cnt)
+			printf("aa_close failed\n");
+		else
+			printf("aa_close success (%d)\n", dev_cnt);
 
 		break;
 	}
