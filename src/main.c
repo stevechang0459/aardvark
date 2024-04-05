@@ -12,6 +12,7 @@ typedef enum _aa_func_idx_e {
 	AA_FUNC_IDX_I2C_SLAVE_POLL,
 	AA_FUNC_IDX_SMB_MASTER_BLOCK_WRITE,
 	AA_FUNC_IDX_SMB_MASTER_BLOCK_READ,
+	AA_FUNC_IDX_SMB_SLAVE_POLL,
 
 	AA_FUNC_IDX_MAX
 } aa_func_idx_e;
@@ -31,6 +32,7 @@ static const aardvark_func_list_t aa_func_list[] = {
 	{"i2c-write-file", AA_FUNC_IDX_I2C_MASTER_WRITE_FILE},
 	{"smb-block-write", AA_FUNC_IDX_SMB_MASTER_BLOCK_WRITE},
 	{"smb-block-read", AA_FUNC_IDX_SMB_MASTER_BLOCK_READ},
+	{"smb-slave-poll", AA_FUNC_IDX_SMB_SLAVE_POLL},
 
 	{NULL}
 };
@@ -219,6 +221,23 @@ int main(int argc, char *argv[])
 	case AA_FUNC_IDX_SMB_MASTER_BLOCK_READ:
 		break;
 
+	case AA_FUNC_IDX_SMB_SLAVE_POLL:
+	{
+		int ret = 0;
+		int port = atoi(argv[2]);
+		u8 addr = (u8)strtol(argv[3], 0, 0);
+		int timeout_ms = atoi(argv[4]);
+
+		printf("port: %d\n", port);
+		printf("addr: %02x\n", addr);
+		printf("timeout_ms: %d\n", timeout_ms);
+
+		ret = aa_smb_slave_poll(port, addr, timeout_ms);
+		if (ret)
+			printf("aa_smb_slave_poll failed (%d)\n", ret);
+
+		break;
+	}
 	default:
 		die("bad arguments: aardvark <function> [option] <value>");
 	}
