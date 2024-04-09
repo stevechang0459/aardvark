@@ -49,7 +49,7 @@ static void smb_slave_poll(Aardvark handle, int timeout_ms)
 
 			// Dump the data to the screen
 			printf("\n*** Transaction #%02d\n", trans_num);
-			printf("Data read from SMbus master:");
+			printf("Data read from SMbus master (%d):", num_bytes);
 			for (i = 0; i < num_bytes; ++i) {
 				if ((i & 0x0f) == 0) {
 					printf("\n%04x:  ", i);
@@ -73,7 +73,8 @@ static void smb_slave_poll(Aardvark handle, int timeout_ms)
 
 			// Print status information to the screen
 			printf("*** Transaction #%02d\n", trans_num);
-			printf("Number of bytes written to master: %04d\n", num_bytes);
+			printf("Number of bytes written to SMbus master: %04d\n",
+			       num_bytes);
 
 			printf("\n");
 		} else if (result == AA_ASYNC_SPI) {
@@ -84,11 +85,11 @@ static void smb_slave_poll(Aardvark handle, int timeout_ms)
 		// Use aa_async_poll to wait for the next transaction
 		result = aa_async_poll(handle, INTERVAL_TIMEOUT);
 		if (result == AA_ASYNC_NO_DATA) {
-			// If bus idle for more than 60 s, just break the loop.
+			// If bus idle for more than 60 seconds, just break the loop.
 			if (idle_num && ((idle_num % 120) == 0)) {
 				printf("Bus is idle for more than 60 seconds.\n");
 				printf("No more data available from SMbus master.\n");
-				break;
+				// break;
 			}
 
 			++idle_num;

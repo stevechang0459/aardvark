@@ -45,10 +45,10 @@ LDFLAGS = \
 # LDLIBS. Non-library linker flags, such as -L, should go in the LDFLAGS variable.
 LIBS = \
 	main \
+	aardvark \
 	checksum \
 	crc \
 	utility \
-	aardvark \
 
 LDLIBS = $(foreach lib,$(LIBS),-l$(lib)) -lpthread	# <-- Do not change this order.
 

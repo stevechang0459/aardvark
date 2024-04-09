@@ -17,7 +17,9 @@
             "string.h": "c",
             "types.h": "c",
             "stdio.h": "c",
-            "aardvark_app.h": "c"
+            "aardvark_app.h": "c",
+            "unistd.h": "c",
+            "getopt.h": "c"
         }
     }
 }
