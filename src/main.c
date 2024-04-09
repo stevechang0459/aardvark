@@ -13,6 +13,7 @@ typedef enum _aa_func_idx_e {
 	AA_FUNC_IDX_SMB_MASTER_BLOCK_WRITE,
 	AA_FUNC_IDX_SMB_MASTER_BLOCK_READ,
 	AA_FUNC_IDX_SMB_SLAVE_POLL,
+	AA_FUNC_IDX_TEST,
 
 	AA_FUNC_IDX_MAX
 } aa_func_idx_e;
@@ -33,6 +34,7 @@ static const aardvark_func_list_t aa_func_list[] = {
 	{"smb-block-write", AA_FUNC_IDX_SMB_MASTER_BLOCK_WRITE},
 	{"smb-block-read", AA_FUNC_IDX_SMB_MASTER_BLOCK_READ},
 	{"smb-slave-poll", AA_FUNC_IDX_SMB_SLAVE_POLL},
+	{"test-smb-ctrl-tgt", AA_FUNC_IDX_TEST},
 
 	{NULL}
 };
@@ -230,6 +232,24 @@ int main(int argc, char *argv[])
 		printf("timeout_ms: %d\n", timeout_ms);
 
 		ret = aa_smb_slave_poll(port, addr, timeout_ms);
+		if (ret)
+			printf("aa_smb_slave_poll failed (%d)\n", ret);
+
+		break;
+	}
+	case AA_FUNC_IDX_TEST: {
+		int ret = 0;
+		int port = atoi(argv[2]);
+		u8 tgt_addr = (u8)strtol(argv[3], 0, 0);
+		u8 ctrl_addr = (u8)strtol(argv[4], 0, 0);
+		int timeout_ms = atoi(argv[5]);
+
+		printf("port: %d\n", port);
+		printf("tgt_addr: %02x\n", tgt_addr);
+		printf("ctrl_addr: %02x\n", ctrl_addr);
+		printf("timeout_ms: %d\n", timeout_ms);
+
+		ret = test_smb_controller_target_poll(port, tgt_addr, ctrl_addr, timeout_ms);
 		if (ret)
 			printf("aa_smb_slave_poll failed (%d)\n", ret);
 
