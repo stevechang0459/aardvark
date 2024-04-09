@@ -29,7 +29,7 @@
 #include "aardvark.h"
 
 #define BUFFER_SIZE  2048
-#define I2C_BITRATE   400
+#define I2C_BITRATE   100
 
 static u8 data_out[BUFFER_SIZE];
 
@@ -110,7 +110,7 @@ int aa_i2c_file(int port, u8 addr, char *filename)
 	}
 
 	// Ensure that the I2C subsystem is enabled
-	aa_configure(handle, AA_CONFIG_SPI_I2C);
+	aa_configure(handle, AA_CONFIG_GPIO_I2C);
 
 	// Enable the I2C bus pullup resistors (2.2k resistors).
 	// This command is only effective on v2.0 hardware or greater.
