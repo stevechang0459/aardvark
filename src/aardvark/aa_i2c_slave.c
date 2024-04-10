@@ -120,7 +120,7 @@ static void i2c_slave_poll(Aardvark handle, int timeout_ms)
 	}
 }
 
-int aa_i2c_slave_poll(int port, u8 addr, int timeout_ms)
+int aa_i2c_slave_poll(int port, u8 dev_addr, int timeout_ms)
 {
 	Aardvark handle;
 	u8 slave_resp[SLAVE_RESP_SIZE];
@@ -151,7 +151,7 @@ int aa_i2c_slave_poll(int port, u8 addr, int timeout_ms)
 	aa_i2c_slave_set_response(handle, SLAVE_RESP_SIZE, slave_resp);
 
 	// Enable the slave
-	aa_i2c_slave_enable(handle, addr, 0, 0);
+	aa_i2c_slave_enable(handle, dev_addr >> 1, 0, 0);
 
 	// Watch the I2C port
 	i2c_slave_poll(handle, timeout_ms);

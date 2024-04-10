@@ -8,7 +8,7 @@ DIR = aardvark
 
 SUBDIR =
 
-INCLUDE =
+INCLUDE = crc \
 
 SRCS = $(wildcard *.c)
 

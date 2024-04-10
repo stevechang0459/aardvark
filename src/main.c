@@ -12,8 +12,9 @@ typedef enum _aa_func_idx_e {
 	AA_FUNC_IDX_I2C_SLAVE_POLL,
 	AA_FUNC_IDX_SMB_MASTER_BLOCK_WRITE,
 	AA_FUNC_IDX_SMB_MASTER_BLOCK_READ,
-	AA_FUNC_IDX_SMB_SLAVE_POLL,
+	AA_FUNC_IDX_SMB_DEVICE_POLL,
 	AA_FUNC_IDX_TEST,
+	AA_FUNC_IDX_TEST2,
 
 	AA_FUNC_IDX_MAX
 } aa_func_idx_e;
@@ -33,8 +34,9 @@ static const aardvark_func_list_t aa_func_list[] = {
 	{"i2c-write-file", AA_FUNC_IDX_I2C_MASTER_WRITE_FILE},
 	{"smb-block-write", AA_FUNC_IDX_SMB_MASTER_BLOCK_WRITE},
 	{"smb-block-read", AA_FUNC_IDX_SMB_MASTER_BLOCK_READ},
-	{"smb-slave-poll", AA_FUNC_IDX_SMB_SLAVE_POLL},
-	{"test-smb-ctrl-tgt", AA_FUNC_IDX_TEST},
+	{"smb-dev-poll", AA_FUNC_IDX_SMB_DEVICE_POLL},
+	{"test-smb-ctrl-tar", AA_FUNC_IDX_TEST},
+	{"test-smb-block-write", AA_FUNC_IDX_TEST2},
 
 	{NULL}
 };
@@ -51,12 +53,8 @@ static void die(const char *fmt, ...)
 
 #define OPT_ARDVARK_TRACE (1)
 
-static int interaction_mode = 0;
-
 int main(int argc, char *argv[])
 {
-	const char *arg;
-
 #if (OPT_ARDVARK_TRACE)
 	printf("argc:%d\n", argc);
 	for (int i = 0; i < argc; i++) {
@@ -66,26 +64,7 @@ int main(int argc, char *argv[])
 #endif
 
 	if (argc < 2) {
-		die("bad arguments: aardvark [-I] <function> [option(s)] <value> ...");
-	}
-
-	// Extract flag
-	while ((arg = argv[1]) != NULL) {
-		if (*arg != '-')
-			break;
-		for (;;) {
-			switch (*++arg) {
-			case '0':
-				break;
-			case 'I':
-				interaction_mode = 1;
-				continue;
-			default:
-				die("Unknown flag '%s'", arg);
-			}
-			break;
-		}
-		argv++;
+		die("Bad arguments: aardvark [-I] <function> [option(s)] <value> ...");
 	}
 
 	const char *function = argv[1];
@@ -159,33 +138,33 @@ int main(int argc, char *argv[])
 	}
 	case AA_FUNC_IDX_I2C_MASTER_WRITE_FILE: {
 		if (argc < 5) {
-			printf("usage: aa_i2c_file <PORT> <SLAVE_ADDR> <filename>\n");
-			printf("  SLAVE_ADDR is the target slave address\n");
+			printf("Usage: aa_i2c_file <port> <tar_addr> <file_name>\n");
+			printf("  tar_addr is the target slave address\n");
 			printf("\n");
-			printf("  'filename' should contain data to be sent\n");
+			printf("  'file_name' should contain data to be sent\n");
 			printf("  to the downstream i2c device\n");
 			return 1;
 		}
 
 		int ret = 0;
 		int port = atoi(argv[2]);
-		u8 addr = (u8)strtol(argv[3], 0, 0);
-		char *filename = argv[4];
+		u8 tar_addr = (u8)strtol(argv[3], 0, 0);
+		char *file_name = argv[4];
 
 		printf("port: %d\n", port);
-		printf("addr: %02x\n", addr);
-		printf("filename: %s\n", filename);
+		printf("target: %02x\n", tar_addr);
+		printf("file_name: %s\n", file_name);
 
-		ret = aa_i2c_file(port, addr, filename);
+		ret = aa_i2c_file(port, tar_addr, file_name);
 		if (ret)
 			printf("aa_i2c_file failed (%d)\n", ret);
 
 		break;
 	}
 	case AA_FUNC_IDX_I2C_SLAVE_POLL: {
-		if (argc < 4) {
-			printf("usage: aai2c_slave <PORT> <SLAVE_ADDR> <TIMEOUT_MS>\n");
-			printf("  SLAVE_ADDR is the slave address for this device\n");
+		if (argc < 5) {
+			printf("Usage: aai2c_slave <port> <tar_addr> <TIMEOUT_MS>\n");
+			printf("  tar_addr is the slave address for this device\n");
 			printf("\n");
 			printf("  The timeout value specifies the time to\n");
 			printf("  block until the first packet is received.\n");
@@ -196,14 +175,14 @@ int main(int argc, char *argv[])
 
 		int ret = 0;
 		int port = atoi(argv[2]);
-		u8 addr = (u8)strtol(argv[3], 0, 0);
+		u8 dev_addr = (u8)strtol(argv[3], 0, 0);
 		int timeout_ms = atoi(argv[4]);
 
 		printf("port: %d\n", port);
-		printf("addr: %02x\n", addr);
-		printf("timeout_ms: %d\n", timeout_ms);
+		printf("device: %02x\n", dev_addr);
+		printf("timeout(ms): %d\n", timeout_ms);
 
-		ret = aa_i2c_slave_poll(port, addr, timeout_ms);
+		ret = aa_i2c_slave_poll(port, dev_addr, timeout_ms);
 		if (ret)
 			printf("aa_i2c_slave_poll failed (%d)\n", ret);
 
@@ -221,42 +200,64 @@ int main(int argc, char *argv[])
 	case AA_FUNC_IDX_SMB_MASTER_BLOCK_READ:
 		break;
 
-	case AA_FUNC_IDX_SMB_SLAVE_POLL: {
+	case AA_FUNC_IDX_SMB_DEVICE_POLL: {
 		int ret = 0;
 		int port = atoi(argv[2]);
-		u8 addr = (u8)strtol(argv[3], 0, 0);
+		u8 dev_addr = (u8)strtol(argv[3], 0, 0);
 		int timeout_ms = atoi(argv[4]);
 
 		printf("port: %d\n", port);
-		printf("addr: %02x\n", addr);
-		printf("timeout_ms: %d\n", timeout_ms);
+		printf("device: %02x\n", dev_addr);
+		printf("timeout(ms): %d\n", timeout_ms);
 
-		ret = aa_smb_slave_poll(port, addr, timeout_ms);
+		ret = aa_smbus_device_poll(port, dev_addr, timeout_ms);
 		if (ret)
 			printf("aa_smb_slave_poll failed (%d)\n", ret);
 
 		break;
 	}
 	case AA_FUNC_IDX_TEST: {
+		if (argc != 6)
+			die("Bad arguments (%d): aardvark test-smb-ctrl-tgt <port> <target address> <device address> <timeout>", argc);
+
 		int ret = 0;
 		int port = atoi(argv[2]);
-		u8 tgt_addr = (u8)strtol(argv[3], 0, 0);
-		u8 ctrl_addr = (u8)strtol(argv[4], 0, 0);
+		u8 tar_addr = (u8)strtol(argv[3], 0, 0);
+		u8 dev_addr = (u8)strtol(argv[4], 0, 0);
 		int timeout_ms = atoi(argv[5]);
 
 		printf("port: %d\n", port);
-		printf("tgt_addr: %02x\n", tgt_addr);
-		printf("ctrl_addr: %02x\n", ctrl_addr);
-		printf("timeout_ms: %d\n", timeout_ms);
+		printf("target: %02x,%02x\n", tar_addr, tar_addr >> 1);
+		printf("device: %02x,%02x\n", dev_addr, dev_addr >> 1);
+		printf("timeout(ms): %d\n", timeout_ms);
 
-		ret = test_smb_controller_target_poll(port, tgt_addr, ctrl_addr, timeout_ms);
+		ret = test_smbus_controller_target_poll(port, tar_addr, dev_addr, timeout_ms);
+		if (ret)
+			printf("aa_smb_slave_poll failed (%d)\n", ret);
+
+		break;
+	}
+	case AA_FUNC_IDX_TEST2: {
+		if (argc != 5)
+			die("Bad arguments (%d): aardvark test-smb-block-write <port> <target address> <file name>", argc);
+
+		int ret = 0;
+		int port = atoi(argv[2]);
+		u8 tar_addr = (u8)strtol(argv[3], 0, 0);
+		char *file_name = argv[4];
+
+		printf("port: %d\n", port);
+		printf("target address: %02x,%02x\n", tar_addr, tar_addr >> 1);
+		printf("file name: %s\n", file_name);
+
+		ret = test_smbus_file_block_write(port, tar_addr, file_name);
 		if (ret)
 			printf("aa_smb_slave_poll failed (%d)\n", ret);
 
 		break;
 	}
 	default:
-		die("bad arguments: aardvark <function> [option] <value>");
+		die("Bad arguments: aardvark <function> [option(s)] <value(s)>");
 	}
 
 	return 0;

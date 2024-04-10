@@ -9,12 +9,12 @@
 
 static u8 data_in[BUFFER_SIZE];
 
-static void smb_slave_poll(Aardvark handle, int timeout_ms)
+static void smbus_device_poll(Aardvark handle, int timeout_ms)
 {
 	int trans_num = 0;
 	int idle_num = 0;
 	int result;
-	u8 addr;
+	u8 dev_addr;
 
 	printf("Watching slave SMBus data...\n");
 
@@ -38,7 +38,7 @@ static void smb_slave_poll(Aardvark handle, int timeout_ms)
 		 */
 		if (result == AA_ASYNC_I2C_READ) {
 			// Get data written by master
-			int num_bytes = aa_i2c_slave_read(handle, &addr,
+			int num_bytes = aa_i2c_slave_read(handle, &dev_addr,
 			                                  BUFFER_SIZE, data_in);
 			int i;
 
@@ -97,7 +97,7 @@ static void smb_slave_poll(Aardvark handle, int timeout_ms)
 	}
 }
 
-int aa_smb_slave_poll(int port, u8 addr, int timeout_ms)
+int aa_smbus_device_poll(int port, u8 addr, int timeout_ms)
 {
 	Aardvark handle;
 
@@ -121,7 +121,7 @@ int aa_smb_slave_poll(int port, u8 addr, int timeout_ms)
 	aa_i2c_slave_enable(handle, addr, 0, 0);
 
 	// Watch the I2C port
-	smb_slave_poll(handle, timeout_ms);
+	smbus_device_poll(handle, timeout_ms);
 
 	// Disable the Aardvark adapter's power pins.
 	aa_target_power(handle, AA_TARGET_POWER_NONE);
@@ -133,7 +133,8 @@ int aa_smb_slave_poll(int port, u8 addr, int timeout_ms)
 	return 0;
 }
 
-static void aa_smb_controller_target_poll(Aardvark handle, u8 tgt_addr, int timeout_ms)
+static void smbus_controller_target_poll(
+        Aardvark handle, u8 tar_addr, int timeout_ms)
 {
 	int trans_num = 0;
 	int idle_num = 0;
@@ -184,11 +185,6 @@ static void aa_smb_controller_target_poll(Aardvark handle, u8 tgt_addr, int time
 				}
 			}
 			printf("\n\n");
-			#if 0
-			printf("addr: 0x%02x\n", addr);
-			printf("cmd: 0x%02x\n", data_in[0]);
-			printf("byte_cnt: %d\n", data_in[1]);
-			#endif
 
 			int count, num_write = 2;
 			u8 data_out[2];
@@ -196,8 +192,8 @@ static void aa_smb_controller_target_poll(Aardvark handle, u8 tgt_addr, int time
 			data_out[1] = 0x34;
 
 			// Write the data to the bus
-			count = aa_i2c_write(handle, tgt_addr, AA_I2C_NO_FLAGS,
-								(u16)num_write, data_out);
+			count = aa_i2c_write(handle, tar_addr, AA_I2C_NO_FLAGS,
+			                     (u16)num_write, data_out);
 			if (count < 0) {
 				printf("error: %s\n", aa_status_string(count));
 			} else if (count == 0) {
@@ -245,7 +241,8 @@ static void aa_smb_controller_target_poll(Aardvark handle, u8 tgt_addr, int time
 	}
 }
 
-int test_smb_controller_target_poll(int port, u8 tgt_addr, u8 ctrl_addr, int timeout_ms)
+int test_smbus_controller_target_poll(
+        int port, u8 tar_addr, u8 dev_addr, int timeout_ms)
 {
 	Aardvark handle;
 
@@ -271,10 +268,10 @@ int test_smb_controller_target_poll(int port, u8 tgt_addr, u8 ctrl_addr, int tim
 	aa_target_power(handle, AA_TARGET_POWER_BOTH);
 
 	// Enable the slave
-	aa_i2c_slave_enable(handle, ctrl_addr, 0, 0);
+	aa_i2c_slave_enable(handle, dev_addr >> 1, 0, 0);
 
 	// Watch the I2C port
-	aa_smb_controller_target_poll(handle, tgt_addr, timeout_ms);
+	smbus_controller_target_poll(handle, tar_addr >> 1, timeout_ms);
 
 	// Disable the Aardvark adapter's power pins.
 	aa_target_power(handle, AA_TARGET_POWER_NONE);

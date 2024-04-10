@@ -27,13 +27,14 @@
 #include <stdlib.h>
 
 #include "aardvark.h"
+#include "crc8.h"
 
 #define BUFFER_SIZE  2048
 #define I2C_BITRATE   100
 
 static u8 data_out[BUFFER_SIZE];
 
-static void blast_bytes(Aardvark handle, u8 slave_addr, char *filename)
+static void blast_bytes(Aardvark handle, u8 tar_addr, char *filename)
 {
 	FILE *file;
 	int trans_num = 0;
@@ -56,7 +57,7 @@ static void blast_bytes(Aardvark handle, u8 slave_addr, char *filename)
 		}
 
 		// Write the data to the bus
-		count = aa_i2c_write(handle, slave_addr, AA_I2C_NO_FLAGS,
+		count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
 		                     (u16)num_write, data_out);
 		if (count < 0) {
 			printf("error: %s\n", aa_status_string(count));
@@ -96,7 +97,114 @@ cleanup:
 	fclose(file);
 }
 
-int aa_i2c_file(int port, u8 addr, char *filename)
+int aa_i2c_file(int port, u8 tar_addr, char *file_name)
+{
+	Aardvark handle;
+	int bit_rate;
+
+	// Open the device
+	handle = aa_open(port);
+	if (handle <= 0) {
+		printf("Unable to open Aardvark device on port %d\n", port);
+		printf("Error code = %d\n", handle);
+		return 1;
+	}
+
+	// Ensure that the I2C subsystem is enabled
+	aa_configure(handle, AA_CONFIG_GPIO_I2C);
+
+	// Enable the I2C bus pullup resistors (2.2k resistors).
+	// This command is only effective on v2.0 hardware or greater.
+	// The pullup resistors on the v1.02 hardware are enabled by default.
+	aa_i2c_pullup(handle, AA_I2C_PULLUP_BOTH);
+
+	// Enable the Aardvark adapter's power pins.
+	// This command is only effective on v2.0 hardware or greater.
+	// The power pins on the v1.02 hardware are not enabled by default.
+	aa_target_power(handle, AA_TARGET_POWER_BOTH);
+
+	// Setup the bitrate
+	bit_rate = aa_i2c_bitrate(handle, I2C_BITRATE);
+	printf("Bitrate set to %d kHz\n", bit_rate);
+
+	blast_bytes(handle, tar_addr, file_name);
+
+	// Close the device
+	aa_close(handle);
+
+	return 0;
+}
+
+static void smb_file_block_write(Aardvark handle, u8 tar_addr, char *filename)
+{
+	FILE *file;
+	int trans_num = 0;
+
+	// Open the file
+	file = fopen(filename, "rb");
+	if (!file) {
+		printf("Unable to open file '%s'\n", filename);
+		return;
+	}
+
+	while (!feof(file)) {
+		int num_write, count;
+		int i;
+
+		// Read from the file
+		num_write = fread((void *)&data_out[3], 1, BUFFER_SIZE, file);
+		if (!num_write) {
+			break;
+		}
+
+		data_out[0] = tar_addr;
+		data_out[1] = 0xF;
+		data_out[2] = num_write;
+		// data_out[3:num_write + 2]
+		data_out[num_write + 3] = crc8(0, data_out, num_write + 3);
+
+		// Write the data to the bus
+		count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
+		                     (u16)num_write + 3, &data_out[1]);
+		if (count < 0) {
+			printf("error: %s\n", aa_status_string(count));
+			goto cleanup;
+		} else if (count == 0) {
+			printf("error: no bytes written\n");
+			printf("  are you sure you have the right slave address?\n");
+			goto cleanup;
+		} else if (count != (num_write + 3)) {
+			printf("error: only a partial number of bytes written\n");
+			printf("  (%d) instead of full (%d)\n", count, num_write);
+			goto cleanup;
+		}
+
+		printf("*** Transaction #%02d\n", trans_num);
+
+		// Dump the data to the screen
+		printf("Data written to device:");
+		for (i = 0; i < count; ++i) {
+			if ((i & 0x0f) == 0) {
+				printf("\n%04x:  ", i);
+			}
+			printf("%02x ", data_out[i] & 0xff);
+			if (((i + 1) & 0x07) == 0) {
+				printf(" ");
+			}
+		}
+		printf("\n\n");
+
+		++trans_num;
+
+		// Sleep a tad to make sure slave has time to process this request
+		aa_sleep_ms(10);
+	}
+
+cleanup:
+	fclose(file);
+}
+
+int test_smbus_file_block_write(int port, u8 tar_addr, char *filename)
 {
 	Aardvark handle;
 	int bitrate;
@@ -126,7 +234,7 @@ int aa_i2c_file(int port, u8 addr, char *filename)
 	bitrate = aa_i2c_bitrate(handle, I2C_BITRATE);
 	printf("Bitrate set to %d kHz\n", bitrate);
 
-	blast_bytes(handle, addr, filename);
+	smb_file_block_write(handle, tar_addr, filename);
 
 	// Close the device
 	aa_close(handle);
