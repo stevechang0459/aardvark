@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+    "settings": {
+        "files.associations": {
+            "global.h": "c",
+            "pthread.h": "c",
+            "thread.h": "c",
+            "main.h": "c",
+            "checksum.h": "c",
+            "utility.h": "c",
+            "nvme_mi.h": "c",
+            "aardvark.h": "c",
+            "string.h": "c",
+            "types.h": "c",
+            "stdio.h": "c",
+            "aardvark_app.h": "c",
+            "unistd.h": "c",
+            "getopt.h": "c"
+        }
+    }
+}

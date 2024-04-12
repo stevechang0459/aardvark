@@ -90,7 +90,7 @@ typedef signed   __int64  s64;
 typedef float   f32;
 typedef double  f64;
 #else
-#include "global.h"
+#include "types.h"
 #endif /* TOTALPHASE_DATA_TYPES */
 
 

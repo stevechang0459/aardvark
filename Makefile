@@ -14,6 +14,7 @@ SUBDIR = \
 	src/crc \
 	src/utility \
 	src/aardvark \
+	src/smbus \
 
 COMMON_INCLUDE = \
 	$(CURDIR)/include \
@@ -45,6 +46,7 @@ LDFLAGS = \
 # LDLIBS. Non-library linker flags, such as -L, should go in the LDFLAGS variable.
 LIBS = \
 	main \
+	smbus \
 	aardvark \
 	checksum \
 	crc \

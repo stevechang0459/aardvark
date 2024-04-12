@@ -1,6 +1,7 @@
-#include "global.h"
+#include <stdint.h>
+#include "types.h"
 
-u32 crc32(char *data, int length)
+u32 crc32(const char *data, int length)
 {
 #include "crctable.out"
 	const uint32_t CRC_INIT = 0xffffffffL;

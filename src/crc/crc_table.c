@@ -19,9 +19,8 @@
 /*                                                                            */
 /******************************************************************************/
 
-// #include <stdio.h>
-// #include <stdlib.h>
-#include "global.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "crc_model.h"
 

@@ -69,7 +69,7 @@
 #ifndef CM_DONE
 #define CM_DONE
 
-#include "global.h"
+#include "types.h"
 
 /******************************************************************************/
 

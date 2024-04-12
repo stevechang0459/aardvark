@@ -1,4 +1,5 @@
 #include "crc8.h"
+#include "types.h"
 
 u8 crc8(u8 crc, const u8 *data, size_t len)
 {

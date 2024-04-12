@@ -1,8 +1,8 @@
 #ifndef CRC32_H
 #define CRC32_H
 
-#include "global.h"
+#include "types.h"
 
-u32 crc32(char *data, int length);
+extern u32 crc32(const char *data, int length);
 
 #endif // ~ CRC32_H

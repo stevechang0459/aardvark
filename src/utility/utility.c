@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include "types.h"
 #include "utility.h"
 
 void *aligned_alloc(size_t size, u32 align)

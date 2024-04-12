@@ -1,19 +1,16 @@
-# Project: algo3
+# Project: aardvark
 # Makefile created by Steve Chang
-# Date modified: 2024.02.25
+# Date modified: 2024.04.12
 
-LIBNAME = libmain.a
+LIBNAME = libsmbus.a
 
-DIR = src
+DIR = smbus
 
 SUBDIR =
 
 INCLUDE = \
-	checksum \
-	crc \
-	utility \
 	aardvark \
-	smbus \
+	crc \
 
 SRCS = $(wildcard *.c)
 
