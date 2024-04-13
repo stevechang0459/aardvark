@@ -31,7 +31,6 @@ int smbus_write_file(Aardvark handle, u8 tar_addr, u8 cmd_code,
 
 		// Read from the file
 		byte_count = fread((void *)&block[3], 1, BLOCK_SIZE_MAX, file);
-		fprintf(stderr, "byte_count=%d\n", byte_count);
 		if (!byte_count)
 			break;
 
