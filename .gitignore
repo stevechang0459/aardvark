@@ -52,6 +52,7 @@ Mkfile.old
 dkms.conf
 
 # Project
+.vscode
 msys.lnk
 AStyle
 _astylerc

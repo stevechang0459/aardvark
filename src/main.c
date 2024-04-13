@@ -175,7 +175,7 @@ static void main_exit(int ret, int handle, int func_sel, const char *fmt, ...)
 	// This command is only effective on v2.0 hardware or greater.
 	// The power pins on the v1.02 hardware are not enabled by default.
 	if (!m_keep_power)
-	     aa_target_power(handle, AA_TARGET_POWER_NONE);
+		aa_target_power(handle, AA_TARGET_POWER_NONE);
 
 	if (fmt) {
 		va_list argp;
@@ -337,35 +337,30 @@ int main(int argc, char *argv[])
 		if (cmd_code < 0)
 			goto exit;
 
-		file_name = argv[optind + 4];
-
 		// Setup the bit rate
 		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
 		if (real_bit_rate != bit_rate)
 			fprintf(stderr, "warning: the bitrate is different from user input\n");
 
-		if (argc < optind + 6)
-			main_exit(1, handle, func_idx, "error: too few arguments\n");
-
-		if (argc > (int)sizeof(block) + optind + 5)
+		if (argc > (int)sizeof(block) + optind + 4)
 			main_exit(1, handle, func_idx, "error: too many arguments\n");
 
-		int len, value;
-		for (len = 0; len + optind + 6 < argc; len++) {
-			value = strtol(argv[optind + len + 5], &end, 0);
+		int byte_count, value;
+		for (byte_count = 0; byte_count + optind + 4 < argc; byte_count++) {
+			value = strtol(argv[byte_count + optind + 4], &end, 0);
 			if (*end || value < 0)
 				main_exit(1, handle, -1, "error: invalid data value '%s'\n",
-				          argv[optind + len + 5]);
+				          argv[byte_count + optind + 5]);
 
 			if (value > 0xff)
 				main_exit(1, handle, -1, "error: data value '%s' out of range\n",
-				          argv[optind + len + 5]);
+				          argv[byte_count + optind + 5]);
 
-			block[len] = value;
+			block[byte_count] = value;
 		}
 
-		int ret
-		        = smbus_write_block(handle, tar_addr, cmd_code, block, len, pec);
+		int ret = smbus_write_block(handle, tar_addr, cmd_code, block,
+		                            byte_count, pec);
 		if (ret)
 			main_exit(1, handle, -1, "smbus_write_file failed (%d)\n", ret);
 
