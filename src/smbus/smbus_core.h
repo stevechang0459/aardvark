@@ -4,10 +4,12 @@
 #include "aardvark.h"
 #include "types.h"
 
-#define BUFFER_SIZE                     2048
+#define BLOCK_SIZE_MAX                  256
 #define I2C_DEFAULT_BITRATE             100
 
-extern int smbus_write_file(Aardvark handle, u8 tar_addr, const char *filen_ame,
-                            u8 pec);
+extern int smbus_write_file(Aardvark handle, u8 tar_addr, u8 cmd_code,
+                            const char *file_name, u8 pec);
+extern int smbus_write_block(Aardvark handle, u8 tar_addr, u8 cmd_code,
+                             const u8 *block, u8 len, u8 pec);
 
 #endif // ~ SMBUS_CORE_H

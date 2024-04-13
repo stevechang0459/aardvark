@@ -11,7 +11,7 @@
 
 typedef enum _aa_func_idx_e {
 	AA_FUNC_IDX_DETECT = 0,
-	AA_FUNC_IDX_SMB_WRITE_FILE,
+	AA_FUNC_IDX_SMB_WRITE_FILE = 1,
 	AA_FUNC_IDX_I2C_MASTER_WRITE,
 	AA_FUNC_IDX_I2C_MASTER_READ,
 	AA_FUNC_IDX_I2C_MASTER_WRITE_FILE,
@@ -20,7 +20,8 @@ typedef enum _aa_func_idx_e {
 	AA_FUNC_IDX_SMB_DEVICE_POLL,
 	AA_FUNC_IDX_TEST,
 	AA_FUNC_IDX_TEST2,
-	AA_FUNC_IDX_SMB_WRITE_FILE,
+	AA_FUNC_IDX_SMB_BLOCK_WRITE,
+	AA_FUNC_IDX_SMB_ARP_EXEC,
 	AA_FUNC_IDX_MAX
 } aa_func_idx_e;
 
@@ -29,57 +30,63 @@ typedef struct _aardvark_func_list_t {
 	aa_func_idx_e index;
 } aardvark_func_list_t;
 
+static int m_keep_power = 0;
+static u8 block[BLOCK_SIZE_MAX];
+
 static const aardvark_func_list_t aa_func_list[] = {
 	{"smb-write-file", AA_FUNC_IDX_SMB_WRITE_FILE},
-	{"detect", AA_FUNC_IDX_DETECT},
-	{"open", AA_FUNC_IDX_OPEN},
-	{"close", AA_FUNC_IDX_CLOSE},
-	{"i2c-write", AA_FUNC_IDX_I2C_MASTER_WRITE},
-	{"i2c-read", AA_FUNC_IDX_I2C_MASTER_READ},
-	{"i2c-slave-poll", AA_FUNC_IDX_I2C_SLAVE_POLL},
+	{"smb-block-write", AA_FUNC_IDX_SMB_BLOCK_WRITE},
 	{"i2c-write-file", AA_FUNC_IDX_I2C_MASTER_WRITE_FILE},
-	{"smb-block-read", AA_FUNC_IDX_SMB_MASTER_BLOCK_READ},
+	{"i2c-slave-poll", AA_FUNC_IDX_I2C_SLAVE_POLL},
 	{"smb-dev-poll", AA_FUNC_IDX_SMB_DEVICE_POLL},
 	{"test-smb-ctrl-tar", AA_FUNC_IDX_TEST},
-	{"test-smb-block-write", AA_FUNC_IDX_TEST2},
 
 	{NULL}
 };
 
-static void help(aa_func_idx_e func_sel)
+static void help(int func_sel)
 {
 	switch (func_sel) {
 	case AA_FUNC_IDX_SMB_WRITE_FILE:
 		fprintf(stderr,
-		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-file <port> <target-address> <cmd-code> <file-name>\n"
-		        "  I2CBUS is an integer or an I2C bus name\n"
-		        "  ADDRESS is an integer (0x08 - 0x77, or 0x00 - 0x7f if -a is given)\n"
-		        "  MODE is one of:\n"
-		        "    c (byte, no value)\n"
-		        "    b (byte data, default)\n"
-		        "    w (word data)\n"
-		        "    i (I2C block data)\n"
-		        "    s (SMBus block data)\n"
-		        "    Append p for SMBus PEC\n");
+		        "Usage: aardvark [-a] [-b <bit rate>] [-k] [-c] [-p] [-u] smb-write-file [port]\n"
+		        "                [target-address] [cmd-code] [file-name]\n"
+		        "  option is one of:\n"
+		        "    -a (all range address)\n"
+		        "    -b (bit rate)\n"
+		        "    -k (keep target power)\n"
+		        "    -c (pec)\n"
+		        "    -p (enable target power)\n"
+		        "    -u (pull-up SCL and SDA)\n"
+		        "  'port' is an integer to indicate a valid port to use\n"
+		        "  'target-address' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n"
+		        "\nExample 1 (send test.bin to address 0x3a with command 0xf and pec):\n"
+		        "  # aardvark -cu smb-write-file 0 0x3a 0xf test.bin\n"
+		        "\nExample 2 (send test.bin to address 0x3a with command 0xf and pec, Also, turn\n"
+		        "  on the power and keep the power even if the function is complete):\n"
+		        "  # aardvark -kcpu smb-write-file 0 0x3a 0xf test.bin\n"
+		       );
 		break;
 
-	case AA_FUNC_IDX_SMB_ARP_EXEC:
+	case AA_FUNC_IDX_SMB_BLOCK_WRITE:
 		fprintf(stderr,
-		        "Usage: aardvark [-k] [-c] [-p] [-u] [-b <bitrate>] [-d <device-address>] arp-exec\n"
-		        "I2CBUS DESC [DATA] [DESC [DATA]]...\n"
-		        "  I2CBUS is an integer or an I2C bus name\n"
-		        "  DESC describes the transfer in the form: {r|w}LENGTH[@address]\n"
-		        "    1) read/write-flag 2) LENGTH (range 0-65535, or '?')\n"
-		        "    3) I2C address (use last one if omitted)\n"
-		        "  DATA are LENGTH bytes for a write message. They can be shortened by a suffix:\n"
-		        "    = (keep value constant until LENGTH)\n"
-		        "    + (increase value by 1 until LENGTH)\n"
-		        "    - (decrease value by 1 until LENGTH)\n"
-		        "    p (use pseudo random generator until LENGTH with value as seed)\n\n"
-		        "Example (bus 0, read 8 byte at offset 0x64 from EEPROM at 0x50):\n"
-		        "  # i2ctransfer 0 w1@0x50 0x64 r8\n"
-		        "Example (same EEPROM, at offset 0x42 write 0xff 0xfe ... 0xf0):\n"
-		        "  # i2ctransfer 0 w17@0x50 0x42 0xff-\n");
+		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-block-write "
+		        "                [port] [target-address] [cmd-code] [<data-byte>...]\n"
+		        "  option is one of:\n"
+		        "    -a (all range address)\n"
+		        "    -b (bit rate)\n"
+		        "    -k (keep target power)\n"
+		        "    -c (pec)\n"
+		        "    -p (enable target power)\n"
+		        "    -u (pull-up SCL and SDA)\n"
+		        "  'port' is an integer to indicate a valid port to use\n"
+		        "  'target-address' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n"
+		        "\nExample 1 (send test.bin to address 0x3a with command 0xf and pec):\n"
+		        "  # aardvark -cu smb-write-file 0 0x3a 0xf test.bin\n"
+		        "\nExample 2 (send test.bin to address 0x3a with command 0xf and pec, Also, turn\n"
+		        "  on the power and keep the power even if the function is complete):\n"
+		        "  # aardvark -kcpu smb-write-file 0 0x3a 0xf test.bin\n"
+		       );
 		break;
 
 	case AA_FUNC_IDX_MAX:
@@ -98,7 +105,7 @@ int parse_cmd_code(const char *cmd_code_opt)
 	char *end;
 	cmd_code = strtol(cmd_code_opt, &end, 0);
 	if (*end || cmd_code < 0) {
-		fprintf(stderr, "Error: Command code invalid\n");
+		fprintf(stderr, "error: invalid command code\n");
 		return -1;
 	}
 
@@ -111,7 +118,7 @@ int parse_bit_rate(const char *bit_rate_opt)
 		char *end;
 		int bit_rate = strtol(bit_rate_opt, &end, 0);
 		if (*end || bit_rate <= 0) {
-			fprintf(stderr, "Error: Bit rate invalid\n");
+			fprintf(stderr, "error: invalid bit rate\n");
 			return -1;
 		}
 
@@ -134,7 +141,7 @@ int parse_i2c_address(const char *address_opt, int all_addrs)
 
 	address = strtol(address_opt, &end, 0);
 	if (*end || !*address_opt) {
-		fprintf(stderr, "Error: Address is not a number!\n");
+		fprintf(stderr, "error: address is not a number!\n");
 		return -1;
 	}
 
@@ -144,12 +151,38 @@ int parse_i2c_address(const char *address_opt, int all_addrs)
 	}
 
 	if (address < min_addr || address > max_addr) {
-		fprintf(stderr, "Error: Address out of range "
+		fprintf(stderr, "error: address out of range "
 		        "(valid address is: 0x%02lx-0x%02lx)\n", min_addr, max_addr);
 		return -2;
 	}
 
 	return address;
+}
+
+static void main_exit(int ret, int handle, int func_sel, const char *fmt, ...)
+{
+	// // Disable the Aardvark adapter's power pins.
+	// // This command is only effective on v2.0 hardware or greater.
+	// // The power pins on the v1.02 hardware are not enabled by default.
+	// if (!m_keep_power)
+	//      aa_target_power(handle, AA_TARGET_POWER_NONE);
+
+	if (fmt) {
+		va_list argp;
+		va_start(argp, fmt);
+		vfprintf(stderr, fmt, argp);
+		va_end(argp);
+		fputc('\n', stderr);
+	}
+
+	// Close the device
+	if (handle)
+		aa_close(handle);
+
+	if (func_sel >= 0)
+		help(func_sel);
+
+	exit(ret);
 }
 
 int main(int argc, char *argv[])
@@ -162,11 +195,11 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	Aardvark handle;
+	Aardvark handle = 0;
 	char *end, *bit_rate_opt = NULL;
-	int version = 0, power = 0, keep_power = 0, pull_up = 0, all_addr = 0;
-	int pec = 0, opt;
-	int port, real_bit_rate, bit_rate, tar_addr, cmd_code;
+	int func_idx = -1;
+	int all_addr = 0, pec = 0,  power = 0, pull_up = 0, version = 0, manual = 0;
+	int opt, port, real_bit_rate, bit_rate, tar_addr, cmd_code;
 	const char *file_name;
 
 	real_bit_rate = bit_rate = I2C_DEFAULT_BITRATE;
@@ -177,56 +210,49 @@ int main(int argc, char *argv[])
 		case 'a': all_addr = 1; break;
 		case 'b': bit_rate_opt = optarg; break;
 		case 'c': pec = 1; break;
-		case 'k': keep_power = 1; break;
+		case 'k': m_keep_power = 1; break;
 		case 'p': power = 1; break;
 		case 'u': pull_up = 1; break;
 		case 'v': version = 1; break;
-		case 'h':
-		case '?':
-			help(AA_FUNC_IDX_MAX);
-			exit(opt == '?');
+		case 'h': manual = 1; break;
 		}
 	}
 
-	if (version) {
-		fprintf(stderr, "SMBus Host Software Version %s\n", VERSION);
-		exit(0);
-	}
+	if (version)
+		main_exit(0, 0, -1, "SMBus Host Software Version %s\n", VERSION);
 
-	printf("optind=%d,argc=%d\n", optind, argc);
-	if (argc == optind) {
-		help(AA_FUNC_IDX_MAX);
-		exit(0);
+	if (argc < optind + 1) {
+		main_exit(1, 0, AA_FUNC_IDX_MAX, "error: too few arguments\n");
 	}
 
 	const char *function = argv[optind];
-	int func_idx = -1;
-
 	for (int i = 0; aa_func_list[i].name != NULL; i++) {
 		const char *func_name = aa_func_list[i].name;
-		printf("%s,%s\n", func_name, function);
 		if (strcmp(func_name, function) == 0) {
 			func_idx = aa_func_list[i].index;
 			break;
 		}
 	}
 
-	if (argc < optind + 2) {
-		help(AA_FUNC_IDX_MAX);
-		exit(0);
-	}
+	if (func_idx < 0)
+		main_exit(1, 0, AA_FUNC_IDX_MAX, "error: no match function\n");
+
+	if (manual)
+		main_exit(0, 0, func_idx, NULL);
+
+	if (argc < optind + 2)
+		main_exit(1, 0, func_idx, "error: too few arguments\n");
 
 	port = strtol(argv[optind + 1], &end, 0);
 	if (*end || port < 0)
-		fprintf(stderr, "Error: Port invalid!\n");
+		main_exit(1, 0, -1, "error: invalid port number\n");
 
 	// Open the device
 	handle = aa_open(port);
 	if (handle <= 0) {
-		printf("Error: Unable to open Aardvark device on port %d (%x)\n", port,
-		       port);
+		printf("error: unable to open Aardvark device on port %d\n", port);
 		printf("Error code = %d\n", handle);
-		exit(1);
+		main_exit(1, 0, -1, NULL);
 	}
 
 	// Ensure that the I2C subsystem is enabled
@@ -245,14 +271,13 @@ int main(int argc, char *argv[])
 		aa_target_power(handle, AA_TARGET_POWER_BOTH);
 
 	switch (func_idx) {
-	// Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-file
-	//                 <port> <target-address> <cmd-code> <file-name>
+	/**
+	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-file
+	 *                 <port> <target-address> <cmd-code> <file-name>
+	 */
 	case AA_FUNC_IDX_SMB_WRITE_FILE: {
-		int ret;
-		if (argc < optind + 5) {
-			help(AA_FUNC_IDX_SMB_WRITE_FILE);
-			goto exit;
-		}
+		if (argc < optind + 5)
+			main_exit(1, handle, -1, "error: too few arguments\n");
 
 		bit_rate = parse_bit_rate(bit_rate_opt);
 		if (bit_rate < 0)
@@ -273,20 +298,74 @@ int main(int argc, char *argv[])
 		// Setup the bit rate
 		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
 		if (real_bit_rate != bit_rate)
-			printf("Warning: The bitrate is different from user input\n");
+			fprintf(stderr, "warning: the bitrate is different from user input\n");
 
-		ret = smbus_write_file(handle, tar_addr, file_name, pec);
-		if (ret) {
-			printf("smbus_write_file failed (%d)\n", ret);
+		int ret = smbus_write_file(handle, tar_addr, cmd_code, file_name, pec);
+		if (ret)
+			main_exit(1, handle, -1, "smbus_write_file failed (%d)\n", ret);
+
+		break;
+	}
+	/**
+	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-block-write
+	 *                 <port> <target-address> <cmd-code> <data-byte(s)>
+	 */
+	case AA_FUNC_IDX_SMB_BLOCK_WRITE: {
+		if (argc < optind + 5)
+			main_exit(1, handle, func_idx, "error: too few arguments\n");
+
+		bit_rate = parse_bit_rate(bit_rate_opt);
+		if (bit_rate < 0)
 			goto exit;
+
+		tar_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (tar_addr < 0)
+			goto exit;
+
+		cmd_code = parse_cmd_code(argv[optind + 3]);
+		if (cmd_code < 0)
+			goto exit;
+
+		file_name = argv[optind + 4];
+		if (!file_name)
+			goto exit;
+
+		// Setup the bit rate
+		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
+		if (real_bit_rate != bit_rate)
+			fprintf(stderr, "warning: the bitrate is different from user input\n");
+
+		if (argc > (int)sizeof(block) + optind + 5)
+			main_exit(1, handle, func_idx, "error: too many arguments\n");
+
+		if (argc < optind + 6)
+			main_exit(1, handle, func_idx, "error: too few arguments\n");
+
+		int len, value;
+		for (len = 0; len + optind + 6 < argc; len++) {
+			value = strtol(argv[optind + len + 5], &end, 0);
+			if (*end || value < 0)
+				main_exit(1, handle, -1, "error: invalid data value '%s'\n",
+				          argv[optind + len + 5]);
+
+			if (value > 0xff)
+				main_exit(1, handle, -1, "error: data value '%s' out of range\n",
+				          argv[optind + len + 5]);
+
+			block[len] = value;
 		}
+
+		int ret
+		        = smbus_write_block(handle, tar_addr, cmd_code, block, len, pec);
+		if (ret)
+			main_exit(1, handle, -1, "smbus_write_file failed (%d)\n", ret);
 
 		break;
 	}
 	case AA_FUNC_IDX_DETECT: {
 		int ret = aa_detect();
 		if (ret)
-			printf("Error: %s\n", aa_status_string(ret));
+			printf("error: %s\n", aa_status_string(ret));
 
 		break;
 	}
@@ -342,15 +421,6 @@ int main(int argc, char *argv[])
 
 		break;
 	}
-	case AA_FUNC_IDX_I2C_MASTER_WRITE:
-		break;
-
-	case AA_FUNC_IDX_I2C_MASTER_READ:
-		break;
-
-	case AA_FUNC_IDX_SMB_MASTER_BLOCK_READ:
-		break;
-
 	case AA_FUNC_IDX_SMB_DEVICE_POLL: {
 		int ret = 0;
 		int port = atoi(argv[2]);
@@ -389,24 +459,8 @@ int main(int argc, char *argv[])
 		break;
 	}
 
-	// Disable the Aardvark adapter's power pins.
-	// This command is only effective on v2.0 hardware or greater.
-	// The power pins on the v1.02 hardware are not enabled by default.
-	if (!keep_power)
-		aa_target_power(handle, AA_TARGET_POWER_NONE);
-
-	// Close the device
-	aa_close(handle);
-	exit(0);
+	main_exit(0, handle, -1, NULL);
 
 exit:
-	// Disable the Aardvark adapter's power pins.
-	// This command is only effective on v2.0 hardware or greater.
-	// The power pins on the v1.02 hardware are not enabled by default.
-	if (!keep_power)
-		aa_target_power(handle, AA_TARGET_POWER_NONE);
-
-	// Close the device
-	aa_close(handle);
-	exit(1);
+	main_exit(1, handle, -1, NULL);
 }
