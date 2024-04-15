@@ -51,15 +51,15 @@ int smbus_write_block(Aardvark handle, u8 tar_addr, u8 cmd_code,
 	tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
 	                        (u16)write_count, &packet[1]);
 	if (tx_count < 0) {
-		printf("error: %s\n", aa_status_string(tx_count));
+		fprintf(stderr, "error: %s\n", aa_status_string(tx_count));
 		return 0;
 	} else if (tx_count == 0) {
-		printf("error: no bytes written\n");
-		printf("  are you sure you have the right slave address?\n");
+		fprintf(stderr, "error: no bytes written\n");
+		fprintf(stderr, "  are you sure you have the right slave address?\n");
 		return 0;
 	} else if (tx_count != write_count) {
-		printf("error: only a partial number of bytes written\n");
-		printf("  (%d) instead of full (%d)\n", tx_count, write_count);
+		fprintf(stderr, "error: only a partial number of bytes written\n");
+		fprintf(stderr, "  (%d) instead of full (%d)\n", tx_count, write_count);
 		return 0;
 	} else
 		fprintf(stderr, "wr:%d,tx:%d\n", write_count, tx_count);
@@ -76,7 +76,7 @@ int smbus_write_file(Aardvark handle, u8 tar_addr, u8 cmd_code,
 	// Open the file
 	FILE *file = fopen(file_name, "rb");
 	if (!file) {
-		printf("error: unable to open file '%s'\n", file_name);
+		perror("fopen");
 		return -1;
 	}
 
@@ -103,15 +103,15 @@ int smbus_write_file(Aardvark handle, u8 tar_addr, u8 cmd_code,
 		tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
 		                        (u16)write_count, &packet[1]);
 		if (tx_count < 0) {
-			printf("error: %s\n", aa_status_string(tx_count));
+			fprintf(stderr, "error: %s\n", aa_status_string(tx_count));
 			goto cleanup;
 		} else if (tx_count == 0) {
-			printf("error: no bytes written\n");
-			printf("  are you sure you have the right slave address?\n");
+			fprintf(stderr, "error: no bytes written\n");
+			fprintf(stderr, "  are you sure you have the right slave address?\n");
 			goto cleanup;
 		} else if (tx_count != write_count) {
-			printf("error: only a partial number of bytes written\n");
-			printf("  (%d) instead of full (%d)\n", tx_count, write_count);
+			fprintf(stderr, "error: only a partial number of bytes written\n");
+			fprintf(stderr, "  (%d) instead of full (%d)\n", tx_count, write_count);
 			goto cleanup;
 		} else
 			fprintf(stderr, "wr:%d,tx:%d\n", write_count, tx_count);
