@@ -32,37 +32,171 @@ void dump_packet(const u8 *packet, int packet_len, const char *fmt, ...)
 	printf("\n\n");
 }
 
+static int smbus_check_tx_count(int tx_count, int write_count)
+{
+	if (tx_count < 0) {
+		fprintf(stderr, "error: %s\n", aa_status_string(tx_count));
+		return -1;
+	} else if (tx_count == 0) {
+		fprintf(stderr, "error: no bytes written\n");
+		fprintf(stderr, "  are you sure you have the right slave address?\n");
+		return -1;
+	} else if (tx_count != write_count) {
+		fprintf(stderr, "error: only a partial number of bytes written\n");
+		fprintf(stderr, "  (%d) instead of full (%d)\n", tx_count, write_count);
+		return -1;
+	} else {
+		// fprintf(stderr, "wr:%d,tx:%d\n", write_count, tx_count);
+		return 0;
+	}
+}
+
+int smbus_send_byte(Aardvark handle, u8 tar_addr, u8 data, u8 pec_flag)
+{
+	int tx_count, write_count;
+	packet[0] = tar_addr;
+	packet[1] = data;
+	write_count = 1;
+
+	if (pec_flag) {
+		++write_count;
+		packet[write_count] = crc8(0, packet, write_count);
+	}
+
+	// Write the data to the bus
+	tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
+	                        write_count, &packet[1]);
+
+	if (smbus_check_tx_count(tx_count, write_count))
+		return -1;
+
+	return 0;
+}
+
+int smbus_write_byte(Aardvark handle, u8 tar_addr, u8 cmd_code, u8 data,
+                     u8 pec_flag)
+{
+	int tx_count, write_count;
+	packet[0] = tar_addr;
+	packet[1] = cmd_code;
+	packet[2] = data;
+	write_count = 2;
+
+	if (pec_flag) {
+		++write_count;
+		packet[write_count] = crc8(0, packet, write_count);
+	}
+
+	tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
+	                        write_count, &packet[1]);
+
+	if (smbus_check_tx_count(tx_count, write_count))
+		return -1;
+
+	return 0;
+}
+
+int smbus_write_word(Aardvark handle, u8 tar_addr, u8 cmd_code, u16 data,
+                     u8 pec_flag)
+{
+	int tx_count, write_count;
+	packet[0] = tar_addr;
+	packet[1] = cmd_code;
+	packet[2] = data & 0xFF;
+	packet[3] = data >> 8;
+	write_count = 3;
+
+	if (pec_flag) {
+		++write_count;
+		packet[write_count] = crc8(0, packet, write_count);
+	}
+
+	tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
+	                        write_count, &packet[1]);
+
+	if (smbus_check_tx_count(tx_count, write_count))
+		return -1;
+
+	return 0;
+}
+
+int smbus_write32(Aardvark handle, u8 tar_addr, u8 cmd_code, u32 data,
+                  u8 pec_flag)
+{
+	int tx_count, write_count;
+	packet[0] = tar_addr;
+	packet[1] = cmd_code;
+	packet[2] = data & 0xFF;
+	packet[3] = (data >> 8) & 0xFF;
+	packet[4] = (data >> 16) & 0xFF;
+	packet[5] = data >> 24;
+	write_count = 5;
+
+	if (pec_flag) {
+		++write_count;
+		packet[write_count] = crc8(0, packet, write_count);
+	}
+
+	tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
+	                        write_count, &packet[1]);
+
+	if (smbus_check_tx_count(tx_count, write_count))
+		return -1;
+
+	return 0;
+}
+
+int smbus_write64(Aardvark handle, u8 tar_addr, u8 cmd_code, u64 data,
+                  u8 pec_flag)
+{
+	int tx_count, write_count;
+	packet[0] = tar_addr;
+	packet[1] = cmd_code;
+	packet[2] = data & 0xFF;
+	packet[3] = (data >> 8) & 0xFF;
+	packet[4] = (data >> 16) & 0xFF;
+	packet[5] = (data >> 24) & 0xFF;
+	packet[6] = (data >> 32) & 0xFF;
+	packet[7] = (data >> 40) & 0xFF;
+	packet[8] = (data >> 48) & 0xFF;
+	packet[9] = data >> 56;
+	write_count = 9;
+
+	if (pec_flag) {
+		++write_count;
+		packet[write_count] = crc8(0, packet, write_count);
+	}
+
+	tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
+	                        write_count, &packet[1]);
+
+	if (smbus_check_tx_count(tx_count, write_count))
+		return -1;
+
+	return 0;
+}
+
 int smbus_write_block(Aardvark handle, u8 tar_addr, u8 cmd_code,
-                      const u8 *block, u8 byte_count, u8 pec)
+                      const u8 *block, u8 byte_count, u8 pec_flag)
 {
 	int write_count, tx_count;
 	packet[0] = tar_addr;
 	packet[1] = cmd_code;
 	packet[2] = byte_count;
 	memcpy((void *)&packet[3], block, byte_count);
-	write_count = byte_count + 2;
+	write_count = byte_count + 2; // (cmd_code & byte_count)
 
-	if (pec) {
-		write_count++;
+	if (pec_flag) {
+		++write_count;
 		packet[write_count] = crc8(0, packet, write_count);
 	}
 
 	// Write the data to the bus
 	tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
 	                        (u16)write_count, &packet[1]);
-	if (tx_count < 0) {
-		fprintf(stderr, "error: %s\n", aa_status_string(tx_count));
-		return 0;
-	} else if (tx_count == 0) {
-		fprintf(stderr, "error: no bytes written\n");
-		fprintf(stderr, "  are you sure you have the right slave address?\n");
-		return 0;
-	} else if (tx_count != write_count) {
-		fprintf(stderr, "error: only a partial number of bytes written\n");
-		fprintf(stderr, "  (%d) instead of full (%d)\n", tx_count, write_count);
-		return 0;
-	} else
-		fprintf(stderr, "wr:%d,tx:%d\n", write_count, tx_count);
+
+	if (smbus_check_tx_count(tx_count, write_count))
+		return -1;
 
 	// Dump the data to the screen
 	dump_packet(packet, tx_count, "Data written to device:");
@@ -71,7 +205,7 @@ int smbus_write_block(Aardvark handle, u8 tar_addr, u8 cmd_code,
 }
 
 int smbus_write_file(Aardvark handle, u8 tar_addr, u8 cmd_code,
-                     const char *file_name, u8 pec)
+                     const char *file_name, u8 pec_flag)
 {
 	// Open the file
 	FILE *file = fopen(file_name, "rb");
@@ -94,27 +228,17 @@ int smbus_write_file(Aardvark handle, u8 tar_addr, u8 cmd_code,
 		// packet[3:byte_count + 2]
 		write_count = byte_count + 2; // (cmd_code & byte_count)
 
-		if (pec) {
-			write_count++;
+		if (pec_flag) {
+			++write_count;
 			packet[write_count] = crc8(0, packet, write_count);
 		}
 
 		// Write the data to the bus
 		tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
 		                        (u16)write_count, &packet[1]);
-		if (tx_count < 0) {
-			fprintf(stderr, "error: %s\n", aa_status_string(tx_count));
+
+		if (smbus_check_tx_count(tx_count, write_count))
 			goto cleanup;
-		} else if (tx_count == 0) {
-			fprintf(stderr, "error: no bytes written\n");
-			fprintf(stderr, "  are you sure you have the right slave address?\n");
-			goto cleanup;
-		} else if (tx_count != write_count) {
-			fprintf(stderr, "error: only a partial number of bytes written\n");
-			fprintf(stderr, "  (%d) instead of full (%d)\n", tx_count, write_count);
-			goto cleanup;
-		} else
-			fprintf(stderr, "wr:%d,tx:%d\n", write_count, tx_count);
 
 		// Dump the data to the screen
 		dump_packet(packet, tx_count, "Data written to device:");

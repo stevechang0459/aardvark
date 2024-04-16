@@ -12,6 +12,11 @@
 typedef enum _aa_func_idx_e {
 	AA_FUNC_IDX_NULL = -1,
 	AA_FUNC_IDX_DETECT,
+	AA_FUNC_IDX_SMB_SEND_BYTE,
+	AA_FUNC_IDX_SMB_WRITE_BYTE,
+	AA_FUNC_IDX_SMB_WRITE_WORD,
+	AA_FUNC_IDX_SMB_WRITE32,
+	AA_FUNC_IDX_SMB_WRITE64,
 	AA_FUNC_IDX_SMB_WRITE_FILE,
 	AA_FUNC_IDX_I2C_MASTER_WRITE,
 	AA_FUNC_IDX_I2C_MASTER_READ,
@@ -314,6 +319,105 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "warning: the bitrate is different from user input\n");
 
 		int ret = smbus_write_file(handle, tar_addr, cmd_code, file_name, pec);
+		if (ret)
+			main_exit(EXIT_FAILURE, handle, -1, NULL);
+
+		break;
+	}
+	case AA_FUNC_IDX_SMB_SEND_BYTE: {
+		if (argc < optind + 3)
+			main_exit(EXIT_FAILURE, handle, func_idx, "error: too few arguments\n");
+
+		bit_rate = parse_bit_rate(bit_rate_opt);
+		if (bit_rate < 0)
+			goto exit;
+
+		tar_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (tar_addr < 0)
+			goto exit;
+
+		if (argc > optind + 3)
+			main_exit(EXIT_FAILURE, handle, func_idx, "error: too many arguments\n");
+
+		uint32_t data = strtoul(argv[optind + 3], &end, 0);
+		if (*end || errno) {
+			perror("strtoul");
+			main_exit(EXIT_FAILURE, handle, -1, "error: invalid data value '%s'\n",
+			          argv[optind + 3]);
+		}
+
+		if (data > UINT8_MAX)
+			main_exit(EXIT_FAILURE, handle, -1, "error: data value '%s' out of range\n",
+			          argv[optind + 3]);
+
+		int ret = smbus_send_byte(handle, tar_addr, data, pec);
+		if (ret)
+			main_exit(EXIT_FAILURE, handle, -1, NULL);
+
+		break;
+	}
+	case AA_FUNC_IDX_SMB_WRITE_BYTE:
+	case AA_FUNC_IDX_SMB_WRITE_WORD:
+	case AA_FUNC_IDX_SMB_WRITE32:
+	case AA_FUNC_IDX_SMB_WRITE64: {
+		if (argc < optind + 4)
+			main_exit(EXIT_FAILURE, handle, func_idx, "error: too few arguments\n");
+
+		bit_rate = parse_bit_rate(bit_rate_opt);
+		if (bit_rate < 0)
+			goto exit;
+
+		tar_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (tar_addr < 0)
+			goto exit;
+
+		cmd_code = parse_cmd_code(argv[optind + 3]);
+		if (cmd_code < 0)
+			goto exit;
+
+		if (argc > optind + 4)
+			main_exit(EXIT_FAILURE, handle, func_idx, "error: too many arguments\n");
+
+		uint64_t max = 0;
+		switch (func_idx) {
+		case AA_FUNC_IDX_SMB_WRITE_BYTE:
+			max = UINT8_MAX;
+			break;
+		case AA_FUNC_IDX_SMB_WRITE_WORD:
+			max = UINT16_MAX;
+			break;
+		case AA_FUNC_IDX_SMB_WRITE32:
+			max = UINT32_MAX;
+			break;
+		}
+
+		uint64_t data = strtoull(argv[optind + 4], &end, 0);
+		if (*end || errno) {
+			perror("strtoull");
+			main_exit(EXIT_FAILURE, handle, -1, "error: invalid data value '%s'\n",
+			          argv[optind + 4]);
+		}
+
+		if (max && (data > max))
+			main_exit(EXIT_FAILURE, handle, -1, "error: data value '%s' out of range\n",
+			          argv[optind + 4]);
+
+		int ret;
+		switch (func_idx) {
+		case AA_FUNC_IDX_SMB_WRITE_BYTE:
+			ret = smbus_write_byte(handle, tar_addr, cmd_code, (u8)data, pec);
+			break;
+		case AA_FUNC_IDX_SMB_WRITE_WORD:
+			ret = smbus_write_byte(handle, tar_addr, cmd_code, (u16)data, pec);
+			break;
+		case AA_FUNC_IDX_SMB_WRITE32:
+			ret = smbus_write_byte(handle, tar_addr, cmd_code, (u32)data, pec);
+			break;
+		case AA_FUNC_IDX_SMB_WRITE64:
+			ret = smbus_write_byte(handle, tar_addr, cmd_code, data, pec);
+			break;
+		}
+
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
