@@ -17,7 +17,9 @@ typedef enum _aa_func_idx_e {
 	AA_FUNC_IDX_SMB_WRITE_WORD,
 	AA_FUNC_IDX_SMB_WRITE32,
 	AA_FUNC_IDX_SMB_WRITE64,
+	AA_FUNC_IDX_SMB_BLOCK_WRITE,
 	AA_FUNC_IDX_SMB_WRITE_FILE,
+
 	AA_FUNC_IDX_I2C_MASTER_WRITE,
 	AA_FUNC_IDX_I2C_MASTER_READ,
 	AA_FUNC_IDX_I2C_MASTER_WRITE_FILE,
@@ -26,7 +28,6 @@ typedef enum _aa_func_idx_e {
 	AA_FUNC_IDX_SMB_DEVICE_POLL,
 	AA_FUNC_IDX_TEST,
 	AA_FUNC_IDX_TEST2,
-	AA_FUNC_IDX_SMB_BLOCK_WRITE,
 	AA_FUNC_IDX_SMB_ARP_EXEC,
 	AA_FUNC_IDX_MAX
 } aa_func_idx_e;
@@ -291,39 +292,6 @@ int main(int argc, char *argv[])
 		aa_target_power(handle, AA_TARGET_POWER_BOTH);
 
 	switch (func_idx) {
-	/**
-	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-file
-	 *                 <port> <target-address> <cmd-code> <file-name>
-	 */
-	case AA_FUNC_IDX_SMB_WRITE_FILE: {
-		if (argc < optind + 5)
-			main_exit(EXIT_FAILURE, handle, func_idx, "error: too few arguments\n");
-
-		bit_rate = parse_bit_rate(bit_rate_opt);
-		if (bit_rate < 0)
-			goto exit;
-
-		tar_addr = parse_i2c_address(argv[optind + 2], all_addr);
-		if (tar_addr < 0)
-			goto exit;
-
-		cmd_code = parse_cmd_code(argv[optind + 3]);
-		if (cmd_code < 0)
-			goto exit;
-
-		file_name = argv[optind + 4];
-
-		// Setup the bit rate
-		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
-		if (real_bit_rate != bit_rate)
-			fprintf(stderr, "warning: the bitrate is different from user input\n");
-
-		int ret = smbus_write_file(handle, tar_addr, cmd_code, file_name, pec);
-		if (ret)
-			main_exit(EXIT_FAILURE, handle, -1, NULL);
-
-		break;
-	}
 	case AA_FUNC_IDX_SMB_SEND_BYTE: {
 		if (argc < optind + 3)
 			main_exit(EXIT_FAILURE, handle, func_idx, "error: too few arguments\n");
@@ -408,13 +376,13 @@ int main(int argc, char *argv[])
 			ret = smbus_write_byte(handle, tar_addr, cmd_code, (u8)data, pec);
 			break;
 		case AA_FUNC_IDX_SMB_WRITE_WORD:
-			ret = smbus_write_byte(handle, tar_addr, cmd_code, (u16)data, pec);
+			ret = smbus_write_word(handle, tar_addr, cmd_code, (u16)data, pec);
 			break;
 		case AA_FUNC_IDX_SMB_WRITE32:
-			ret = smbus_write_byte(handle, tar_addr, cmd_code, (u32)data, pec);
+			ret = smbus_write32(handle, tar_addr, cmd_code, (u32)data, pec);
 			break;
 		case AA_FUNC_IDX_SMB_WRITE64:
-			ret = smbus_write_byte(handle, tar_addr, cmd_code, data, pec);
+			ret = smbus_write64(handle, tar_addr, cmd_code, data, pec);
 			break;
 		}
 
@@ -467,6 +435,39 @@ int main(int argc, char *argv[])
 
 		int ret = smbus_write_block(handle, tar_addr, cmd_code, block,
 		                            byte_count, pec);
+		if (ret)
+			main_exit(EXIT_FAILURE, handle, -1, NULL);
+
+		break;
+	}
+	/**
+	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-file
+	 *                 <port> <target-address> <cmd-code> <file-name>
+	 */
+	case AA_FUNC_IDX_SMB_WRITE_FILE: {
+		if (argc < optind + 5)
+			main_exit(EXIT_FAILURE, handle, func_idx, "error: too few arguments\n");
+
+		bit_rate = parse_bit_rate(bit_rate_opt);
+		if (bit_rate < 0)
+			goto exit;
+
+		tar_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (tar_addr < 0)
+			goto exit;
+
+		cmd_code = parse_cmd_code(argv[optind + 3]);
+		if (cmd_code < 0)
+			goto exit;
+
+		file_name = argv[optind + 4];
+
+		// Setup the bit rate
+		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
+		if (real_bit_rate != bit_rate)
+			fprintf(stderr, "warning: the bitrate is different from user input\n");
+
+		int ret = smbus_write_file(handle, tar_addr, cmd_code, file_name, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
