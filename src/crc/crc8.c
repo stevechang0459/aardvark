@@ -1,14 +1,16 @@
 #include "crc8.h"
 #include "types.h"
 
-u8 crc8(u8 crc, const void *buf, size_t len)
+u8 crc8(const void *buf, size_t len)
 {
 	const u8 *data = buf;
+	u8 crc = CRC8_INIT;
+
 	while (len--) {
 		crc ^= *data++;
 		for (int i = 8; i > 0; i--) {
 			if (crc & 0x80)
-				crc = (crc << 1) ^ POLY_CRC8;
+				crc = (crc << 1) ^ CRC8_POLY;
 			else
 				crc = (crc << 1);
 		}
@@ -28,12 +30,12 @@ u8 crc8_mr(u8 crc, const void *buf, size_t count)
 		for (i = 0x80; i != 0; i /= 2) {
 			if ((crc & 0x80) != 0) {
 				crc *= 2;
-				crc ^= POLY_CRC8;
+				crc ^= CRC8_POLY;
 			} else {
 				crc *= 2;
 			}
 			if ((*data & i) != 0) {
-				crc ^= POLY_CRC8;
+				crc ^= CRC8_POLY;
 			}
 		}
 		data++;

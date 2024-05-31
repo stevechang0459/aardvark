@@ -87,32 +87,32 @@ clean:
 		cd $(CURDIR); \
 	done
 
-.PHONY: objall
-objall:
+.PHONY: allobj
+allobj:
 	for dir in $(SUBDIR); do \
 		cd $$dir; \
 		make -j $@; \
 		cd $(CURDIR); \
 	done
 
-.PHONY: objclean
-objclean:
+.PHONY: cleanobj
+cleanobj:
 	for dir in $(SUBDIR); do \
 		cd $$dir; \
 		make -j $@; \
 		cd $(CURDIR); \
 	done
 
-.PHONY: depall
-depall:
+.PHONY: alldep
+alldep:
 	for dir in $(SUBDIR); do \
 		cd $$dir; \
 		make -j $@; \
 		cd $(CURDIR); \
 	done
 
-.PHONY: depclean
-depclean:
+.PHONY: cleandep
+cleandep:
 	for dir in $(SUBDIR); do \
 		cd $$dir; \
 		make -j $@; \

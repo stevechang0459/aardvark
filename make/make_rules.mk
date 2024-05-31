@@ -47,8 +47,8 @@ $(LIBDIR)/$(LIBNAME): $(OBJS)
 # 	$(CC) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $@
 
 ###
-.PHONY: objall
-objall: $(OBJS)
+.PHONY: allobj
+allobj: $(OBJS)
 
 $(OBJS): | $(OBJDIR)
 
@@ -59,8 +59,8 @@ $(OBJDIR):
 	mkdir $@
 
 ###
-.PHONY: depall
-depall: | $(OBJDIR)
+.PHONY: alldep
+alldep: | $(OBJDIR)
 	$(CC) $(DEFINES) $(CFLAGS) -M $(SRCS) > $(OBJDIR)/depend.d
 	sed -i 's|\(.*\.o:\)|$(OBJDIR)/\1|g' $(OBJDIR)/depend.d
 
@@ -69,12 +69,12 @@ depall: | $(OBJDIR)
 clean:
 	rm -rf $(OBJDIR)
 
-.PHONY: objclean
-objclean:
+.PHONY: cleanobj
+cleanobj:
 	rm -f $(OBJDIR)/*.o
 
-.PHONY: depclean
-depclean:
+.PHONY: cleandep
+cleandep:
 	rm -f $(OBJDIR)/*.d
 
 ifeq ($(MAKECMDGOALS),all)
