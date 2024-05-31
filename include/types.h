@@ -34,7 +34,7 @@ typedef signed __int64 s64;
 #define u08 u8
 #define s08 s8
 
-typedef unsigned char bool;
+// typedef unsigned char bool;
 
 typedef unsigned char byte;
 typedef unsigned short word;
@@ -63,10 +63,10 @@ typedef int ret_code;
  */
 #define NULL        ((void *)0)
 
-enum {
-	false = 0,
-	true  = 1
-};
+// enum {
+// 	false = 0,
+// 	true  = 1
+// };
 
 enum {
 	FALSE = 0,

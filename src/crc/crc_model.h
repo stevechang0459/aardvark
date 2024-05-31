@@ -69,6 +69,8 @@
 #ifndef CM_DONE
 #define CM_DONE
 
+#include <stdbool.h>
+
 #include "types.h"
 
 /******************************************************************************/

@@ -19,7 +19,8 @@
             "stdio.h": "c",
             "aardvark_app.h": "c",
             "unistd.h": "c",
-            "getopt.h": "c"
+            "getopt.h": "c",
+            "stdbool.h": "c"
         }
     }
 }

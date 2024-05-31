@@ -12,6 +12,7 @@
 typedef enum _aa_func_idx_e {
 	AA_FUNC_IDX_NULL = -1,
 	AA_FUNC_IDX_DETECT,
+	AA_FUNC_IDX_SMB_PREPARE_TO_ARP,
 	AA_FUNC_IDX_SMB_SEND_BYTE,
 	AA_FUNC_IDX_SMB_WRITE_BYTE,
 	AA_FUNC_IDX_SMB_WRITE_WORD,
@@ -41,6 +42,7 @@ static int m_keep_power = 0;
 static u8 block[BLOCK_SIZE_MAX];
 
 static const aardvark_func_list_t aa_func_list[] = {
+	{"prepare-to-arp", AA_FUNC_IDX_SMB_PREPARE_TO_ARP},
 	{"smb-write-file", AA_FUNC_IDX_SMB_WRITE_FILE},
 	{"smb-block-write", AA_FUNC_IDX_SMB_BLOCK_WRITE},
 	{"i2c-write-file", AA_FUNC_IDX_I2C_MASTER_WRITE_FILE},
@@ -221,7 +223,7 @@ int main(int argc, char *argv[])
 	real_bit_rate = bit_rate = I2C_DEFAULT_BITRATE;
 
 	/* handle (optional) flags first */
-	while ((opt = getopt(argc, argv, "abchkpuv")) != -1) {
+	while ((opt = getopt(argc, argv, "abaachkpuv")) != -1) {
 		switch (opt) {
 		case 'a': all_addr = 1; break;
 		case 'b': bit_rate_opt = optarg; break;
@@ -292,8 +294,25 @@ int main(int argc, char *argv[])
 		aa_target_power(handle, AA_TARGET_POWER_BOTH);
 
 	switch (func_idx) {
+	case AA_FUNC_IDX_SMB_PREPARE_TO_ARP:
+	{
+		bit_rate = parse_bit_rate(bit_rate_opt);
+		if (bit_rate < 0)
+			goto exit;
+
+		// Setup the bit rate
+		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
+		if (real_bit_rate != bit_rate)
+			fprintf(stderr, "warning: the bitrate is different from user input\n");
+
+		int ret = smbus_prepare_to_arp(handle, pec);
+		if (ret)
+			main_exit(EXIT_FAILURE, handle, -1, NULL);
+
+		break;
+	}
 	case AA_FUNC_IDX_SMB_SEND_BYTE: {
-		if (argc < optind + 3)
+		if (argc < optind + 4)
 			main_exit(EXIT_FAILURE, handle, func_idx, "error: too few arguments\n");
 
 		bit_rate = parse_bit_rate(bit_rate_opt);

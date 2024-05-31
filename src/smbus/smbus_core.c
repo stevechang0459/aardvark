@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 #include "smbus_core.h"
 #include "aardvark.h"
@@ -54,7 +55,7 @@ static int smbus_check_tx_count(int tx_count, int write_count)
 int smbus_send_byte(Aardvark handle, u8 tar_addr, u8 data, u8 pec_flag)
 {
 	int tx_count, write_count;
-	packet[0] = tar_addr;
+	packet[0] = tar_addr << 1;
 	packet[1] = data;
 	write_count = 1;
 
@@ -64,7 +65,7 @@ int smbus_send_byte(Aardvark handle, u8 tar_addr, u8 data, u8 pec_flag)
 	}
 
 	// Write the data to the bus
-	tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
+	tx_count = aa_i2c_write(handle, tar_addr, AA_I2C_NO_FLAGS,
 	                        write_count, &packet[1]);
 
 	if (smbus_check_tx_count(tx_count, write_count))
@@ -222,7 +223,7 @@ int smbus_write_file(Aardvark handle, u8 tar_addr, u8 cmd_code,
 		if (!byte_count)
 			break;
 
-		packet[0] = tar_addr;
+		packet[0] = tar_addr << 1;
 		packet[1] = cmd_code;
 		packet[2] = byte_count;
 		// packet[3:byte_count + 2]
@@ -234,7 +235,7 @@ int smbus_write_file(Aardvark handle, u8 tar_addr, u8 cmd_code,
 		}
 
 		// Write the data to the bus
-		tx_count = aa_i2c_write(handle, tar_addr >> 1, AA_I2C_NO_FLAGS,
+		tx_count = aa_i2c_write(handle, tar_addr, AA_I2C_NO_FLAGS,
 		                        (u16)write_count, &packet[1]);
 
 		if (smbus_check_tx_count(tx_count, write_count))
@@ -249,5 +250,30 @@ int smbus_write_file(Aardvark handle, u8 tar_addr, u8 cmd_code,
 
 cleanup:
 	fclose(file);
+	return 0;
+}
+
+int smbus_prepare_to_arp(Aardvark handle, bool pec_flag)
+{
+	u16 write_count;
+	int tx_count;
+
+	// SMBus Host Address
+	u8 tar_addr  = SMBUS_ADDR_DEFAULT;
+	packet[0] = tar_addr << 1;
+	packet[1] = SMBUS_ARP_PREPARE_TO_ARP;
+	write_count = 1;
+	if (pec_flag) {
+		++write_count;
+		packet[2] = crc8(0, packet, write_count);
+	}
+
+	tx_count = aa_i2c_write(handle, tar_addr, AA_I2C_NO_FLAGS,
+	                        write_count, &packet[1]);
+	if (smbus_check_tx_count(tx_count, write_count))
+		return -1;
+
+	dump_packet(packet, tx_count, "Prepate to ARP");
+
 	return 0;
 }
