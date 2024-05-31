@@ -54,6 +54,25 @@ static int smbus_verify_byte_written(int num_bytes, int num_written)
 	}
 }
 
+static int smbus_verify_byte_read(int num_bytes, int num_read)
+{
+	if (num_read < 0) {
+		fprintf(stderr, "error: %s\n", aa_status_string(num_read));
+		return -1;
+	} else if (num_read == 0) {
+		fprintf(stderr, "error: no bytes read\n");
+		fprintf(stderr, "  are you sure you have the right slave address?\n");
+		return -1;
+	} else if (num_read != num_bytes) {
+		fprintf(stderr, "error: only a partial number of bytes read\n");
+		fprintf(stderr, "  (%d) instead of full (%d)\n", num_read, num_bytes);
+		return -1;
+	} else {
+		// fprintf(stderr, "wr:%d,tx:%d\n", num_bytes, num_read);
+		return 0;
+	}
+}
+
 int smbus_send_byte(Aardvark handle, u8 slave_addr, u8 u8_data, u8 pec_flag)
 {
 	int num_written, num_bytes;
@@ -307,6 +326,10 @@ int smbus_arp_cmd_get_udid(Aardvark handle, bool pec_flag)
 		printf("[%s]:aa_i2c_read_ext failed (%d)\n", __FUNCTION__, status);
 		return -1;
 	}
+
+	if (smbus_verify_byte_read(num_bytes, num_read))
+		return -1;
+
 	data[2] = slave_addr << 1 | I2C_READ;
 	if (pec_flag) {
 		pec = crc8(data, 21);
