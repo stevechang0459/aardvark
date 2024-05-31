@@ -294,8 +294,7 @@ int main(int argc, char *argv[])
 		aa_target_power(handle, AA_TARGET_POWER_BOTH);
 
 	switch (func_idx) {
-	case AA_FUNC_IDX_SMB_PREPARE_TO_ARP:
-	{
+	case AA_FUNC_IDX_SMB_PREPARE_TO_ARP: {
 		bit_rate = parse_bit_rate(bit_rate_opt);
 		if (bit_rate < 0)
 			goto exit;
@@ -305,7 +304,7 @@ int main(int argc, char *argv[])
 		if (real_bit_rate != bit_rate)
 			fprintf(stderr, "warning: the bitrate is different from user input\n");
 
-		int ret = smbus_prepare_to_arp(handle, pec);
+		int ret = smbus_arp_cmd_prepare_to_arp(handle, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
@@ -452,7 +451,7 @@ int main(int argc, char *argv[])
 			block[byte_count] = value;
 		}
 
-		int ret = smbus_write_block(handle, tar_addr, cmd_code, block,
+		int ret = smbus_block_write(handle, tar_addr, cmd_code, block,
 		                            byte_count, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);

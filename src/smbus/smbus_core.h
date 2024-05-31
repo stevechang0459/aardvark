@@ -26,9 +26,9 @@ int smbus_write64(Aardvark handle, u8 tar_addr, u8 cmd_code, u64 data,
                   u8 pec_flag);
 int smbus_write_file(Aardvark handle, u8 tar_addr, u8 cmd_code,
                      const char *file_name, u8 pec);
-int smbus_write_block(Aardvark handle, u8 tar_addr, u8 cmd_code,
+int smbus_block_write(Aardvark handle, u8 tar_addr, u8 cmd_code,
                       const u8 *block, u8 byte_count, u8 pec);
 
-int smbus_prepare_to_arp(Aardvark handle, bool pec_flag);
+int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag);
 
 #endif // ~ SMBUS_CORE_H
