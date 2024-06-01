@@ -347,7 +347,8 @@ finish:
 
 /**
  * @brief This command requests ARP-capable and/or Discoverable devices to
- * return their target address along with their UDID.
+ * return their target address along with their UDID. If directed = 1, then this
+ * command requests a specific ARP-capable device to return its Unique Identifier.
  */
 int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 tar_addr,
                            bool directed, bool pec_flag)
@@ -424,7 +425,13 @@ finish:
 	return ret;
 }
 
-int smbus_arp_cmd_reset_device(Aardvark handle, bool pec_flag)
+/**
+ * @brief This command forces all non-PTA, ARP-capable devices to return to
+ * their initial state. If directed = 1, then this command forces a specific
+ * non-PTA, ARP-capable device to return to its initial state.
+ */
+int smbus_arp_cmd_reset_device(Aardvark handle, u8 tar_addr, u8 directed,
+                               bool pec_flag)
 {
 	int ret, status;
 	u16 num_bytes, num_written;
@@ -434,7 +441,10 @@ int smbus_arp_cmd_reset_device(Aardvark handle, bool pec_flag)
 
 	u8 slave_addr = SMBUS_ADDR_DEFAULT;
 	data[0] = slave_addr << 1;
-	data[1] = SMBUS_ARP_RESET_DEVICE;
+	if (directed)
+		data[1] = tar_addr << 1;
+	else
+		data[1] = SMBUS_ARP_RESET_DEVICE;
 	num_bytes = 1;
 	if (pec_flag) {
 		++num_bytes;
