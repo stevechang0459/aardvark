@@ -222,7 +222,7 @@ int smbus_block_write(Aardvark handle, u8 slave_addr, u8 cmd_code,
 		return -1;
 
 	// Dump the data to the screen
-	dump_packet(data, num_written, "Data written to device:");
+	dump_packet(data, num_bytes + pec_flag, "Data written to device:");
 
 	return 0;
 }
@@ -264,7 +264,7 @@ int smbus_write_file(Aardvark handle, u8 slave_addr, u8 cmd_code,
 			goto cleanup;
 
 		// Dump the data to the screen
-		dump_packet(data, num_written, "Data written to device:");
+		dump_packet(data, num_bytes + pec_flag, "Data written to device:");
 
 		// Sleep a tad to make sure slave has time to process this request
 		aa_sleep_ms(10);
@@ -304,7 +304,7 @@ int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag)
 	if (smbus_verify_byte_written(num_bytes, num_written))
 		return -1;
 
-	dump_packet(data, 3, "Prepare to ARP");
+	dump_packet(data, num_bytes + pec_flag, "Prepare to ARP");
 
 	return 0;
 }
@@ -347,8 +347,12 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, bool pec_flag)
 		return -1;
 	}
 
+	if (smbus_verify_byte_read(num_bytes, num_read))
+		return -1;
+
+	num_bytes = 21;
 	if (pec_flag) {
-		pec = crc8(data, 21);
+		pec = crc8(data, num_bytes);
 		if (p->pec != pec) {
 			fprintf(stderr, "[%s]:pec mismatch (%02x,%02x)\n",
 			        __FUNCTION__, p->pec, pec);
@@ -356,12 +360,38 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, bool pec_flag)
 		}
 	}
 
-	if (smbus_verify_byte_read(num_bytes, num_read))
-		return -1;
-
-	dump_packet(data, 22, "Get UDID");
+	dump_packet(data, num_bytes + pec_flag, "Get UDID");
 
 	memcpy(udid, p->udid, sizeof(p->udid));
+
+	return 0;
+}
+
+int smbus_arp_cmd_reset_device(Aardvark handle, bool pec_flag)
+{
+	u16 num_bytes, num_written;
+	int status;
+
+	u8 slave_addr = SMBUS_ADDR_DEFAULT;
+	data[0] = slave_addr << 1;
+	data[1] = SMBUS_ARP_RESET_DEVICE;
+	num_bytes = 1;
+	if (pec_flag) {
+		++num_bytes;
+		data[num_bytes] = crc8(data, num_bytes);
+	}
+	status = aa_i2c_write_ext(handle, slave_addr, AA_I2C_NO_FLAGS, num_bytes,
+	                          data, &num_written);
+	if (unlikely(status)) {
+		fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n", __FUNCTION__,
+		        status);
+		return -1;
+	}
+
+	if (smbus_verify_byte_written(num_bytes, num_written))
+		return -1;
+
+	dump_packet(data, num_bytes + pec_flag, "Reset Device");
 
 	return 0;
 }
@@ -383,8 +413,11 @@ int smbus_arp_cmd_assign_address(Aardvark handle, const void *udid, u8 tar_addr,
 	// Byte[18:3]
 	memcpy(&data[3], udid, 16);
 	data[19] = tar_addr;
-	data[20] = crc8(data, 20);
-	num_bytes = 20;
+	num_bytes = 19;
+	if (pec_flag) {
+		++num_bytes;
+		data[num_bytes] = crc8(data, num_bytes);
+	}
 	status = aa_i2c_write_ext(handle, slave_addr, AA_I2C_NO_FLAGS, num_bytes,
 	                          &data[1], &num_written);
 	if (status) {
@@ -396,7 +429,7 @@ int smbus_arp_cmd_assign_address(Aardvark handle, const void *udid, u8 tar_addr,
 	if (smbus_verify_byte_written(num_bytes, num_written))
 		return -1;
 
-	dump_packet(data, 21, "Assign Address");
+	dump_packet(data, num_bytes + pec_flag, "Assign Address");
 
 	return 0;
 }
