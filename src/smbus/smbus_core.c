@@ -200,14 +200,14 @@ int smbus_write64(Aardvark handle, u8 slave_addr, u8 cmd_code, u64 u64_data,
 }
 
 int smbus_block_write(Aardvark handle, u8 slave_addr, u8 cmd_code,
-                      const u8 *block, u8 byte_cnt, u8 pec_flag)
+                      u8 byte_cnt, const void *buf, u8 pec_flag)
 {
 	int ret, status;
 	u16 num_bytes, num_written;
 	data[0] = slave_addr;
 	data[1] = cmd_code;
 	data[2] = byte_cnt;
-	memcpy((void *)&data[3], block, byte_cnt);
+	memcpy(&data[3], buf, byte_cnt);
 	num_bytes = byte_cnt + 2; // (cmd_code & byte_cnt)
 
 	if (pec_flag) {
