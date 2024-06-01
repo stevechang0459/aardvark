@@ -177,7 +177,8 @@ int parse_i2c_address(const char *address_opt, int all_addrs)
 	return address;
 }
 
-static void main_exit(int status_code, int handle, int func_sel, const char *fmt, ...)
+static void main_exit(int status_code, int handle, int func_sel,
+                      const char *fmt, ...)
 {
 	// Disable the Aardvark adapter's power pins.
 	// This command is only effective on v2.0 hardware or greater.
@@ -225,14 +226,30 @@ int main(int argc, char *argv[])
 	/* handle (optional) flags first */
 	while ((opt = getopt(argc, argv, "abaachkpuv")) != -1) {
 		switch (opt) {
-		case 'a': all_addr = 1; break;
-		case 'b': bit_rate_opt = optarg; break;
-		case 'c': pec = 1; break;
-		case 'k': m_keep_power = 1; break;
-		case 'p': power = 1; break;
-		case 'u': pull_up = 1; break;
-		case 'v': version = 1; break;
-		case 'h': manual = 1; break;
+		case 'a':
+			all_addr = 1;
+			break;
+		case 'b':
+			bit_rate_opt = optarg;
+			break;
+		case 'c':
+			pec = 1;
+			break;
+		case 'k':
+			m_keep_power = 1;
+			break;
+		case 'p':
+			power = 1;
+			break;
+		case 'u':
+			pull_up = 1;
+			break;
+		case 'v':
+			version = 1;
+			break;
+		case 'h':
+			manual = 1;
+			break;
 		case '?':
 			main_exit(opt == '?', 0, AA_FUNC_IDX_MAX, NULL);
 		}

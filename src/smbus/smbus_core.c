@@ -25,14 +25,14 @@ static void dump_packet(const void *buf, int packet_len, const char *fmt, ...)
 
 	for (int i = 0; i < packet_len; ++i) {
 		if ((i & 0x0f) == 0) {
-			printf("\n%04x:  ", i);
+			fprintf(stderr, "\n%04x:  ", i);
 		}
-		printf("%02x ", c[i + 1] & 0xff);
+		fprintf(stderr, "%02x ", c[i + 1] & 0xff);
 		if (((i + 1) & 0x07) == 0) {
-			printf(" ");
+			fprintf(stderr, " ");
 		}
 	}
-	printf("\n\n");
+	fprintf(stderr, "\n\n");
 }
 
 static int smbus_verify_byte_written(int num_bytes, int num_written)
@@ -46,7 +46,8 @@ static int smbus_verify_byte_written(int num_bytes, int num_written)
 		return -1;
 	} else if (num_written != num_bytes) {
 		fprintf(stderr, "error: only a partial number of bytes written\n");
-		fprintf(stderr, "  (%d) instead of full (%d)\n", num_written, num_bytes);
+		fprintf(stderr, "  (%d) instead of full (%d)\n", num_written,
+		        num_bytes);
 		return -1;
 	} else {
 		// fprintf(stderr, "wr:%d,tx:%d\n", num_bytes, num_written);
@@ -274,6 +275,10 @@ cleanup:
 	return 0;
 }
 
+/**
+ * @brief This command informs all devices that the ARP Controller is starting
+ * the ARP process.
+ */
 int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag)
 {
 	int status;
@@ -291,19 +296,24 @@ int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag)
 	status = aa_i2c_write_ext(handle, slave_addr, AA_I2C_NO_FLAGS, num_bytes,
 	                          &data[1], &num_written);
 	if (status) {
-		printf("[%s]:aa_i2c_write_ext failed (%d)\n", __FUNCTION__, status);
+		fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n",
+		        __FUNCTION__, status);
 		return -1;
 	}
 
 	if (smbus_verify_byte_written(num_bytes, num_written))
 		return -1;
 
-	dump_packet(data, num_written, "Prepare to ARP");
+	dump_packet(data, 3, "Prepare to ARP");
 
 	return 0;
 }
 
-int smbus_arp_cmd_get_udid(Aardvark handle, bool pec_flag)
+/**
+ * @brief This command requests ARP-capable and/or Discoverable devices to
+ * return their target address along with their UDID.
+ */
+int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, bool pec_flag)
 {
 	int status;
 	u16 num_bytes, num_written, num_read;
@@ -312,36 +322,81 @@ int smbus_arp_cmd_get_udid(Aardvark handle, bool pec_flag)
 	u8 slave_addr = SMBUS_ADDR_DEFAULT;
 	data[0] = slave_addr << 1;
 	data[1] = SMBUS_ARP_GET_UDID;
+	data[2] = slave_addr << 1 | I2C_READ;
 	num_bytes = 1;
 	status = aa_i2c_write_ext(handle, slave_addr, AA_I2C_NO_STOP, num_bytes,
 	                          &data[1], &num_written);
-	if (status) {
-		printf("[%s]:aa_i2c_write_ext failed (%d)\n", __FUNCTION__, status);
+	if (unlikely(status)) {
+		fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n",
+		        __FUNCTION__, status);
 		return -1;
 	}
 	num_bytes = 18;
 	status = aa_i2c_read_ext(handle, slave_addr, AA_I2C_NO_FLAGS, num_bytes,
 	                         &data[3], &num_read);
-	if (status) {
-		printf("[%s]:aa_i2c_read_ext failed (%d)\n", __FUNCTION__, status);
+	if (unlikely(status)) {
+		fprintf(stderr, "[%s]:aa_i2c_read_ext failed (%d)\n",
+		        __FUNCTION__, status);
 		return -1;
+	}
+
+	union smbus_get_udid_ds *p = (void *)data;
+	if (p->byte_cnt != 17) {
+		fprintf(stderr, "[%s]:byte count error (%02x,%02x)\n",
+		        __FUNCTION__, p->byte_cnt, 17);
+		return -1;
+	}
+
+	if (pec_flag) {
+		pec = crc8(data, 21);
+		if (p->pec != pec) {
+			fprintf(stderr, "[%s]:pec mismatch (%02x,%02x)\n",
+			        __FUNCTION__, p->pec, pec);
+			return -1;
+		}
 	}
 
 	if (smbus_verify_byte_read(num_bytes, num_read))
 		return -1;
 
-	data[2] = slave_addr << 1 | I2C_READ;
-	if (pec_flag) {
-		pec = crc8(data, 21);
-		union smbus_get_udid *p = (void *)data;
-		if (pec != p->pec) {
-			printf("[%s]:pec mismatch (%02x,%02x)\n", __FUNCTION__, p->pec,
-			       pec);
-			return -1;
-		}
+	dump_packet(data, 22, "Get UDID");
+
+	memcpy(udid, p->udid, sizeof(p->udid));
+
+	return 0;
+}
+
+/**
+ * @brief The ARP Controller assigns an address to a specific device with this
+ * command.
+ */
+int smbus_arp_cmd_assign_address(Aardvark handle, const void *udid, u8 tar_addr,
+                                 bool pec_flag)
+{
+	u16 num_bytes, num_written;
+	int status;
+
+	u8 slave_addr = SMBUS_ADDR_DEFAULT;
+	data[0] = slave_addr << 1;
+	data[1] = SMBUS_ARP_ASSIGN_ADDRESS;
+	data[2] = 17;
+	// Byte[18:3]
+	memcpy(&data[3], udid, 16);
+	data[19] = tar_addr;
+	data[20] = crc8(data, 20);
+	num_bytes = 20;
+	status = aa_i2c_write_ext(handle, slave_addr, AA_I2C_NO_FLAGS, num_bytes,
+	                          &data[1], &num_written);
+	if (status) {
+		fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n",
+		        __FUNCTION__, status);
+		return -1;
 	}
 
-	dump_packet(data, num_written, "Get UDID");
+	if (smbus_verify_byte_written(num_bytes, num_written))
+		return -1;
+
+	dump_packet(data, 21, "Assign Address");
 
 	return 0;
 }

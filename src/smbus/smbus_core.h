@@ -19,9 +19,13 @@ enum i2c_data_direction {
 };
 
 enum smbus_arp_command {
+	// Prepare to ARP
 	SMBUS_ARP_PREPARE_TO_ARP = 1,
+	// Reset device
 	SMBUS_ARP_RESET_DEVICE = 2,
+	// Get UDID
 	SMBUS_ARP_GET_UDID,
+	// Assign address
 	SMBUS_ARP_ASSIGN_ADDRESS,
 };
 
@@ -40,6 +44,8 @@ int smbus_block_write(Aardvark handle, u8 tar_addr, u8 cmd_code,
                       const u8 *block, u8 byte_count, u8 pec);
 
 int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag);
-int smbus_arp_cmd_get_udid(Aardvark handle, bool pec_flag);
+int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, bool pec_flag);
+int smbus_arp_cmd_assign_address(Aardvark handle, const void *udid, u8 tar_addr,
+                                 bool pec_flag);
 
 #endif // ~ SMBUS_CORE_H
