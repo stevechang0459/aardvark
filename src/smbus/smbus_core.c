@@ -200,14 +200,15 @@ int smbus_write64(Aardvark handle, u8 slave_addr, u8 cmd_code, u64 u64_data,
 }
 
 int smbus_block_write(Aardvark handle, u8 slave_addr, u8 cmd_code,
-                      const u8 *block, u8 byte_count, u8 pec_flag)
+                      const u8 *block, u8 byte_cnt, u8 pec_flag)
 {
-	int num_bytes, num_written;
+	int ret, status;
+	u16 num_bytes, num_written;
 	data[0] = slave_addr;
 	data[1] = cmd_code;
-	data[2] = byte_count;
-	memcpy((void *)&data[3], block, byte_count);
-	num_bytes = byte_count + 2; // (cmd_code & byte_count)
+	data[2] = byte_cnt;
+	memcpy((void *)&data[3], block, byte_cnt);
+	num_bytes = byte_cnt + 2; // (cmd_code & byte_cnt)
 
 	if (pec_flag) {
 		++num_bytes;
@@ -215,21 +216,34 @@ int smbus_block_write(Aardvark handle, u8 slave_addr, u8 cmd_code,
 	}
 
 	// Write the data to the bus
-	num_written = aa_i2c_write(handle, slave_addr >> 1, AA_I2C_NO_FLAGS,
-	                           (u16)num_bytes, &data[1]);
+	status = aa_i2c_write_ext(handle, slave_addr >> 1, AA_I2C_NO_FLAGS,
+	                          num_bytes, &data[1], &num_written);
+	if (status) {
+		fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n",
+		        __FUNCTION__, status);
+		return -SMBUS_CMD_WRITE_FAILED;
+	}
 
-	if (smbus_verify_byte_written(num_bytes, num_written))
-		return -1;
+	if (smbus_verify_byte_written(num_bytes, num_written)) {
+		fprintf(stderr, "[%s]:num written mismatch (%d,%d)\n",
+		        __FUNCTION__, num_bytes, num_written);
+		ret = -SMBUS_CMD_NUM_WRITTEN_MISMATCH;
+		goto finish;
+	}
 
+	ret = SMBUS_CMD_SUCCESS;
+
+finish:
 	// Dump the data to the screen
 	dump_packet(data, num_bytes + pec_flag, "Data written to device:");
 
-	return 0;
+	return ret;
 }
 
 int smbus_write_file(Aardvark handle, u8 slave_addr, u8 cmd_code,
                      const char *file_name, u8 pec_flag)
 {
+	int ret, status;
 	// Open the file
 	FILE *file = fopen(file_name, "rb");
 	if (!file) {
@@ -238,18 +252,18 @@ int smbus_write_file(Aardvark handle, u8 slave_addr, u8 cmd_code,
 	}
 
 	while (!feof(file)) {
-		int num_bytes, num_written, byte_count;
+		u16 num_bytes, num_written, byte_cnt;
 
 		// Read from the file
-		byte_count = fread((void *)&data[3], 1, BLOCK_SIZE_MAX, file);
-		if (!byte_count)
+		byte_cnt = fread((void *)&data[3], 1, BLOCK_SIZE_MAX, file);
+		if (!byte_cnt)
 			break;
 
 		data[0] = slave_addr << 1;
 		data[1] = cmd_code;
-		data[2] = byte_count;
-		// data[3:byte_count + 2]
-		num_bytes = byte_count + 2; // (cmd_code & byte_count)
+		data[2] = byte_cnt;
+		// data[3:byte_cnt + 2]
+		num_bytes = byte_cnt + 2; // (cmd_code & byte_cnt)
 
 		if (pec_flag) {
 			++num_bytes;
@@ -257,11 +271,21 @@ int smbus_write_file(Aardvark handle, u8 slave_addr, u8 cmd_code,
 		}
 
 		// Write the data to the bus
-		num_written = aa_i2c_write(handle, slave_addr, AA_I2C_NO_FLAGS,
-		                           (u16)num_bytes, &data[1]);
-
-		if (smbus_verify_byte_written(num_bytes, num_written))
+		status = aa_i2c_write_ext(handle, slave_addr, AA_I2C_NO_FLAGS,
+		                          num_bytes, &data[1], &num_written);
+		if (status) {
+			fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n",
+			        __FUNCTION__, status);
+			ret = -SMBUS_CMD_WRITE_FAILED;
 			goto cleanup;
+		}
+
+		if (smbus_verify_byte_written(num_bytes, num_written)) {
+			fprintf(stderr, "[%s]:num written mismatch (%d,%d)\n",
+			        __FUNCTION__, num_bytes, num_written);
+			ret = -SMBUS_CMD_NUM_WRITTEN_MISMATCH;
+			goto cleanup;
+		}
 
 		// Dump the data to the screen
 		dump_packet(data, num_bytes + pec_flag, "Data written to device:");
@@ -270,9 +294,11 @@ int smbus_write_file(Aardvark handle, u8 slave_addr, u8 cmd_code,
 		aa_sleep_ms(10);
 	}
 
+	ret = SMBUS_CMD_SUCCESS;
+
 cleanup:
 	fclose(file);
-	return 0;
+	return ret;
 }
 
 /**
@@ -281,8 +307,11 @@ cleanup:
  */
 int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag)
 {
-	int status;
+	int ret, status;
 	u16 num_bytes, num_written;
+
+	union smbus_prepare_to_arp_ds *p = (void *)data;
+	memset(p, 0, sizeof(*p));
 
 	u8 slave_addr = SMBUS_ADDR_DEFAULT;
 	data[0] = slave_addr << 1;
@@ -298,15 +327,22 @@ int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag)
 	if (status) {
 		fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n",
 		        __FUNCTION__, status);
-		return -1;
+		return -SMBUS_CMD_WRITE_FAILED;
 	}
 
-	if (smbus_verify_byte_written(num_bytes, num_written))
-		return -1;
+	if (smbus_verify_byte_written(num_bytes, num_written)) {
+		fprintf(stderr, "[%s]:num written mismatch (%d,%d)\n",
+		        __FUNCTION__, num_bytes, num_written);
+		ret = -SMBUS_CMD_NUM_WRITTEN_MISMATCH;
+		goto finish;
+	}
 
+	ret = SMBUS_CMD_SUCCESS;
+
+finish:
 	dump_packet(data, num_bytes + pec_flag, "Prepare to ARP");
 
-	return 0;
+	return ret;
 }
 
 /**
@@ -316,8 +352,7 @@ int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag)
 int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 tar_addr,
                            bool directed, bool pec_flag)
 {
-	int ret;
-	int status;
+	int ret, status;
 	u16 num_bytes, num_written, num_read;
 	u8 pec;
 
@@ -349,6 +384,8 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 tar_addr,
 	}
 
 	if (smbus_verify_byte_read(num_bytes, num_read)) {
+		fprintf(stderr, "[%s]:num read mismatch (%d,%d)\n",
+		        __FUNCTION__, num_bytes, num_read);
 		ret = -SMBUS_CMD_NUM_READ_MISMATCH;
 		goto finish;
 	}
@@ -389,8 +426,11 @@ finish:
 
 int smbus_arp_cmd_reset_device(Aardvark handle, bool pec_flag)
 {
+	int ret, status;
 	u16 num_bytes, num_written;
-	int status;
+
+	union smbus_reset_device_ds *p = (void *)data;
+	memset(p, 0, sizeof(*p));
 
 	u8 slave_addr = SMBUS_ADDR_DEFAULT;
 	data[0] = slave_addr << 1;
@@ -405,15 +445,22 @@ int smbus_arp_cmd_reset_device(Aardvark handle, bool pec_flag)
 	if (unlikely(status)) {
 		fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n", __FUNCTION__,
 		        status);
-		return -1;
+		return -SMBUS_CMD_WRITE_FAILED;
 	}
 
-	if (smbus_verify_byte_written(num_bytes, num_written))
-		return -1;
+	if (smbus_verify_byte_written(num_bytes, num_written)) {
+		fprintf(stderr, "[%s]:num written mismatch (%d,%d)\n",
+		        __FUNCTION__, num_bytes, num_written);
+		ret = -SMBUS_CMD_NUM_WRITTEN_MISMATCH;
+		goto finish;
+	}
 
+	ret = SMBUS_CMD_SUCCESS;
+
+finish:
 	dump_packet(data, num_bytes + pec_flag, "Reset Device");
 
-	return 0;
+	return ret;
 }
 
 /**
@@ -423,8 +470,11 @@ int smbus_arp_cmd_reset_device(Aardvark handle, bool pec_flag)
 int smbus_arp_cmd_assign_address(Aardvark handle, const void *udid, u8 tar_addr,
                                  bool pec_flag)
 {
+	int ret, status;
 	u16 num_bytes, num_written;
-	int status;
+
+	union smbus_assign_address_ds *p = (void *)data;
+	memset(p, 0, sizeof(*p));
 
 	u8 slave_addr = SMBUS_ADDR_DEFAULT;
 	data[0] = slave_addr << 1;
@@ -443,13 +493,20 @@ int smbus_arp_cmd_assign_address(Aardvark handle, const void *udid, u8 tar_addr,
 	if (status) {
 		fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n",
 		        __FUNCTION__, status);
-		return -1;
+		return -SMBUS_CMD_WRITE_FAILED;
 	}
 
-	if (smbus_verify_byte_written(num_bytes, num_written))
-		return -1;
+	if (smbus_verify_byte_written(num_bytes, num_written)) {
+		fprintf(stderr, "[%s]:num written mismatch (%d,%d)\n",
+		        __FUNCTION__, num_bytes, num_written);
+		ret = -SMBUS_CMD_NUM_WRITTEN_MISMATCH;
+		goto finish;
+	}
 
+	ret = SMBUS_CMD_SUCCESS;
+
+finish:
 	dump_packet(data, num_bytes + pec_flag, "Assign Address");
 
-	return 0;
+	return ret;
 }

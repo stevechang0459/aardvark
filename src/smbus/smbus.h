@@ -15,6 +15,15 @@ enum smbus_cmd_status {
 	SMBUS_CMD_PEC_ERR,
 };
 
+union smbus_prepare_to_arp_ds {
+	struct {
+		u8 slave_addr;
+		u8 cmd;
+		u8 pec;
+	};
+	u8 data[3];
+} __attribute__((packed));
+
 union smbus_get_udid_ds {
 	struct {
 		u8 slave_addr1;
@@ -29,7 +38,16 @@ union smbus_get_udid_ds {
 	u8 data[22];
 } __attribute__((packed));
 
-union smbus_assign_addr_ds {
+union smbus_reset_device_ds {
+	struct {
+		u8 slave_addr;
+		u8 cmd;
+		u8 pec;
+	};
+	u8 data[3];
+} __attribute__((packed));
+
+union smbus_assign_address_ds {
 	struct {
 		u8 slave_addr1;
 		u8 cmd;
