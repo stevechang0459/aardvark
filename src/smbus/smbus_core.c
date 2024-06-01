@@ -313,15 +313,23 @@ int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag)
  * @brief This command requests ARP-capable and/or Discoverable devices to
  * return their target address along with their UDID.
  */
-int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, bool pec_flag)
+int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 tar_addr,
+                           bool directed, bool pec_flag)
 {
+	int ret;
 	int status;
 	u16 num_bytes, num_written, num_read;
 	u8 pec;
 
+	union smbus_get_udid_ds *p = (void *)data;
+	memset(p, 0, sizeof(*p));
+
 	u8 slave_addr = SMBUS_ADDR_DEFAULT;
 	data[0] = slave_addr << 1;
-	data[1] = SMBUS_ARP_GET_UDID;
+	if (directed)
+		data[1] = tar_addr << 1 | 1;
+	else
+		data[1] = SMBUS_ARP_GET_UDID;
 	data[2] = slave_addr << 1 | I2C_READ;
 	num_bytes = 1;
 	status = aa_i2c_write_ext(handle, slave_addr, AA_I2C_NO_STOP, num_bytes,
@@ -329,7 +337,7 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, bool pec_flag)
 	if (unlikely(status)) {
 		fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n",
 		        __FUNCTION__, status);
-		return -1;
+		return -SMBUS_CMD_WRITE_FAILED;
 	}
 	num_bytes = 18;
 	status = aa_i2c_read_ext(handle, slave_addr, AA_I2C_NO_FLAGS, num_bytes,
@@ -337,18 +345,13 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, bool pec_flag)
 	if (unlikely(status)) {
 		fprintf(stderr, "[%s]:aa_i2c_read_ext failed (%d)\n",
 		        __FUNCTION__, status);
-		return -1;
+		return -SMBUS_CMD_READ_FAILED;
 	}
 
-	union smbus_get_udid_ds *p = (void *)data;
-	if (p->byte_cnt != 17) {
-		fprintf(stderr, "[%s]:byte count error (%02x,%02x)\n",
-		        __FUNCTION__, p->byte_cnt, 17);
-		return -1;
+	if (smbus_verify_byte_read(num_bytes, num_read)) {
+		ret = -SMBUS_CMD_NUM_READ_MISMATCH;
+		goto finish;
 	}
-
-	if (smbus_verify_byte_read(num_bytes, num_read))
-		return -1;
 
 	num_bytes = 21;
 	if (pec_flag) {
@@ -356,15 +359,32 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, bool pec_flag)
 		if (p->pec != pec) {
 			fprintf(stderr, "[%s]:pec mismatch (%02x,%02x)\n",
 			        __FUNCTION__, p->pec, pec);
-			return -1;
+			ret = -SMBUS_CMD_PEC_ERR;
+			goto finish;
 		}
 	}
 
-	dump_packet(data, num_bytes + pec_flag, "Get UDID");
+	if (p->byte_cnt != 17) {
+		fprintf(stderr, "[%s]:byte count error (%02x,%02x)\n",
+		        __FUNCTION__, p->byte_cnt, 17);
+		ret = SMBUS_CMD_BYTE_CNT_ERR;
+		goto finish;
+	}
+
+	if (!(p->dev_tar_addr & 1)) {
+		fprintf(stderr, "[%s]:device target address error (%02x)\n",
+		        __FUNCTION__, p->dev_tar_addr);
+		ret = -SMBUS_CMD_DEV_TAR_ADDR_ERR;
+		goto finish;
+	}
 
 	memcpy(udid, p->udid, sizeof(p->udid));
+	ret = SMBUS_CMD_SUCCESS;
 
-	return 0;
+finish:
+	dump_packet(data, num_bytes + pec_flag, "Get UDID");
+
+	return ret;
 }
 
 int smbus_arp_cmd_reset_device(Aardvark handle, bool pec_flag)

@@ -44,7 +44,8 @@ int smbus_block_write(Aardvark handle, u8 tar_addr, u8 cmd_code,
                       const u8 *block, u8 byte_count, u8 pec);
 
 int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag);
-int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, bool pec_flag);
+int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 tar_addr,
+                           bool directed, bool pec_flag);
 int smbus_arp_cmd_assign_address(Aardvark handle, const void *udid, u8 tar_addr,
                                  bool pec_flag);
 

@@ -3,6 +3,18 @@
 
 #include "types.h"
 
+enum smbus_cmd_status {
+	SMBUS_CMD_SUCCESS = 0,
+	SMBUS_CMD_ERROR = 1,
+	SMBUS_CMD_WRITE_FAILED,
+	SMBUS_CMD_READ_FAILED,
+	SMBUS_CMD_NUM_WRITTEN_MISMATCH,
+	SMBUS_CMD_NUM_READ_MISMATCH,
+	SMBUS_CMD_BYTE_CNT_ERR,
+	SMBUS_CMD_DEV_TAR_ADDR_ERR,
+	SMBUS_CMD_PEC_ERR,
+};
+
 union smbus_get_udid_ds {
 	struct {
 		u8 slave_addr1;
