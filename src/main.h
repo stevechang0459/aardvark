@@ -13,6 +13,7 @@ enum function_index {
 	FUNC_IDX_SMB_BLOCK_WRITE,
 	// SMBus Address Resolution Protocol
 	FUNC_IDX_SMB_PREPARE_TO_ARP,
+	FUNC_IDX_SMB_GET_UDID,
 	// Application
 	FUNC_IDX_SMB_WRITE_FILE,
 

@@ -22,6 +22,7 @@ const struct function_list func_list[] = {
 	{"smb-block-write", FUNC_IDX_SMB_BLOCK_WRITE},
 	// SMBus Address Resolution Protocol
 	{"prepare-to-arp", FUNC_IDX_SMB_PREPARE_TO_ARP},
+	{"get-udid", FUNC_IDX_SMB_GET_UDID},
 	// Application
 	{"smb-write-file", FUNC_IDX_SMB_WRITE_FILE},
 	{"i2c-write-file", FUNC_IDX_I2C_MASTER_WRITE_FILE},
@@ -249,6 +250,16 @@ int main(int argc, char *argv[])
 
 	switch (func_idx) {
 	/**
+	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] detect <port>
+	 */
+	case FUNC_IDX_DETECT: {
+		int ret = aa_detect();
+		if (ret)
+			fprintf(stderr, "error: %s\n", aa_status_string(ret));
+
+		break;
+	}
+	/**
 	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-send-byte
 	 *                 <port> <slv_addr> <data>
 	 */
@@ -417,6 +428,13 @@ int main(int argc, char *argv[])
 		break;
 	}
 	case FUNC_IDX_SMB_PREPARE_TO_ARP: {
+		if (argc < optind + 3)
+			main_exit(EXIT_FAILURE, handle, func_idx,
+			          "error: too few arguments\n");
+		else if (argc > optind + 3)
+			main_exit(EXIT_FAILURE, handle, func_idx,
+			          "error: too many arguments\n");
+
 		bit_rate = parse_bit_rate(bit_rate_opt);
 		if (bit_rate < 0)
 			goto exit;
@@ -428,6 +446,28 @@ int main(int argc, char *argv[])
 			        "warning: the bitrate is different from user input\n");
 
 		int ret = smbus_arp_cmd_prepare_to_arp(handle, pec);
+		if (ret)
+			main_exit(EXIT_FAILURE, handle, -1, NULL);
+
+		break;
+	}
+	case FUNC_IDX_SMB_GET_UDID: {
+		bit_rate = parse_bit_rate(bit_rate_opt);
+		if (bit_rate < 0)
+			goto exit;
+
+		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
+		if (real_bit_rate != bit_rate)
+			fprintf(stderr,
+			        "warning: the bitrate is different from user input (%d,%d)\n",
+			        real_bit_rate, bit_rate);
+
+		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (slv_addr < 0)
+			goto exit;
+
+		u8 udid[16];
+		int ret = smbus_arp_cmd_get_udid(handle, udid, slv_addr, 0, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
@@ -469,13 +509,6 @@ int main(int argc, char *argv[])
 		                  handle, slv_addr, cmd_code, file_name, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
-
-		break;
-	}
-	case FUNC_IDX_DETECT: {
-		int ret = aa_detect();
-		if (ret)
-			fprintf(stderr, "error: %s\n", aa_status_string(ret));
 
 		break;
 	}
