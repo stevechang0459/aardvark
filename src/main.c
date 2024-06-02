@@ -100,9 +100,11 @@ int parse_i2c_address(const char *addr_opt, int all_addrs)
 static void main_exit(int status_code, int handle, int func_idx,
                       const char *fmt, ...)
 {
-	// Disable the Aardvark adapter's power pins.
-	// This command is only effective on v2.0 hardware or greater.
-	// The power pins on the v1.02 hardware are not enabled by default.
+	/**
+	 * Disable the Aardvark adapter's power pins. This command is only effective
+	 * on v2.0 hardware or greater. The power pins on the v1.02 hardware are not
+	 * enabled by default.
+	 */
 	if (!m_keep_power)
 		aa_target_power(handle, AA_TARGET_POWER_NONE);
 
@@ -138,7 +140,8 @@ int main(int argc, char *argv[])
 	char *end, *bit_rate_opt = NULL;
 	int func_idx = FUNC_IDX_NULL;
 	int all_addr = 0, pec = 0,  power = 0, pull_up = 0, version = 0, manual = 0;
-	int opt, port, real_bit_rate, bit_rate, slave_addr, cmd_code, i2c_slave_mode;
+	int opt, port, real_bit_rate, bit_rate, slv_addr, cmd_code,
+	    i2c_slave_mode;
 	const char *file_name;
 
 	real_bit_rate = bit_rate = I2C_DEFAULT_BITRATE;
@@ -179,13 +182,15 @@ int main(int argc, char *argv[])
 	}
 
 	if (version)
-		main_exit(EXIT_SUCCESS, 0, -1, "SMBus Host Software Version %s\n", VERSION);
+		main_exit(EXIT_SUCCESS, 0, -1, "SMBus Host Software Version %s\n",
+		          VERSION);
 
 	if (argc < optind + 1) {
 		if (manual)
 			main_exit(EXIT_SUCCESS, 0, FUNC_IDX_MAX, NULL);
 		else
-			main_exit(EXIT_FAILURE, 0, FUNC_IDX_MAX, "error: too few arguments\n");
+			main_exit(EXIT_FAILURE, 0, FUNC_IDX_MAX,
+			          "error: too few arguments\n");
 	}
 
 	// argc == optind + 1
@@ -199,7 +204,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (func_idx < 0)
-		main_exit(EXIT_FAILURE, 0, func_idx, "error: no match function\n");
+		main_exit(EXIT_FAILURE, 0, FUNC_IDX_MAX, "error: no match function\n");
 
 	if (manual)
 		main_exit(EXIT_SUCCESS, 0, func_idx, NULL);
@@ -215,7 +220,8 @@ int main(int argc, char *argv[])
 	// Open the device
 	handle = aa_open(port);
 	if (handle <= 0) {
-		fprintf(stderr, "error: unable to open Aardvark device on port %d\n", port);
+		fprintf(stderr,
+		        "error: unable to open Aardvark device on port %d\n", port);
 		fprintf(stderr, "Error code = %d\n", handle);
 		main_exit(EXIT_FAILURE, 0, -1, NULL);
 	}
@@ -245,10 +251,9 @@ int main(int argc, char *argv[])
 	switch (func_idx) {
 	/**
 	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-send-byte
-	 *                 <port> <target-address> <data-byte>
+	 *                 <port> <slv_addr> <data>
 	 */
 	case FUNC_IDX_SMB_SEND_BYTE: {
-		// argc == optind + 4, 0:func, 1:port, 2:slave_addr, 3:data
 		if (argc < optind + 4)
 			main_exit(EXIT_FAILURE, handle, func_idx,
 			          "error: too few arguments\n");
@@ -260,8 +265,8 @@ int main(int argc, char *argv[])
 		if (bit_rate < 0)
 			goto exit;
 
-		slave_addr = parse_i2c_address(argv[optind + 2], all_addr);
-		if (slave_addr < 0)
+		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (slv_addr < 0)
 			goto exit;
 
 		uint32_t data = strtoul(argv[optind + 3], &end, 0);
@@ -277,33 +282,38 @@ int main(int argc, char *argv[])
 			          "error: data value '%s' out of range\n",
 			          argv[optind + 3]);
 
-		int ret = smbus_send_byte(handle, slave_addr, data, pec);
+		int ret = smbus_send_byte(handle, slv_addr, data, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
 		break;
 	}
+	/**
+	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-xxx
+	 *                 <port> <slv_addr> <cmd_code> <data>
+	 */
 	case FUNC_IDX_SMB_WRITE_BYTE:
 	case FUNC_IDX_SMB_WRITE_WORD:
 	case FUNC_IDX_SMB_WRITE_32:
 	case FUNC_IDX_SMB_WRITE_64: {
-		if (argc < optind + 4)
-			main_exit(EXIT_FAILURE, handle, func_idx, "error: too few arguments\n");
+		if (argc < optind + 5)
+			main_exit(EXIT_FAILURE, handle, func_idx,
+			          "error: too few arguments\n");
+		else if (argc > optind + 5)
+			main_exit(EXIT_FAILURE, handle, func_idx,
+			          "error: too many arguments\n");
 
 		bit_rate = parse_bit_rate(bit_rate_opt);
 		if (bit_rate < 0)
 			goto exit;
 
-		slave_addr = parse_i2c_address(argv[optind + 2], all_addr);
-		if (slave_addr < 0)
+		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (slv_addr < 0)
 			goto exit;
 
 		cmd_code = parse_cmd_code(argv[optind + 3]);
 		if (cmd_code < 0)
 			goto exit;
-
-		if (argc > optind + 4)
-			main_exit(EXIT_FAILURE, handle, func_idx, "error: too many arguments\n");
 
 		uint64_t max = 0;
 		switch (func_idx) {
@@ -321,27 +331,31 @@ int main(int argc, char *argv[])
 		uint64_t data = strtoull(argv[optind + 4], &end, 0);
 		if (*end || errno) {
 			perror("strtoull");
-			main_exit(EXIT_FAILURE, handle, -1, "error: invalid data value '%s'\n",
+			main_exit(EXIT_FAILURE, handle, -1,
+			          "error: invalid data value '%s'\n",
 			          argv[optind + 4]);
 		}
 
 		if (max && (data > max))
-			main_exit(EXIT_FAILURE, handle, -1, "error: data value '%s' out of range\n",
+			main_exit(EXIT_FAILURE, handle, -1,
+			          "error: data value '%s' out of range\n",
 			          argv[optind + 4]);
 
 		int ret;
 		switch (func_idx) {
 		case FUNC_IDX_SMB_WRITE_BYTE:
-			ret = smbus_write_byte(handle, slave_addr, cmd_code, (u8)data, pec);
+			ret = smbus_write_byte(
+			              handle, slv_addr, cmd_code, (u8)data, pec);
 			break;
 		case FUNC_IDX_SMB_WRITE_WORD:
-			ret = smbus_write_word(handle, slave_addr, cmd_code, (u16)data, pec);
+			ret = smbus_write_word(
+			              handle, slv_addr, cmd_code, (u16)data, pec);
 			break;
 		case FUNC_IDX_SMB_WRITE_32:
-			ret = smbus_write32(handle, slave_addr, cmd_code, (u32)data, pec);
+			ret = smbus_write32(handle, slv_addr, cmd_code, (u32)data, pec);
 			break;
 		case FUNC_IDX_SMB_WRITE_64:
-			ret = smbus_write64(handle, slave_addr, cmd_code, data, pec);
+			ret = smbus_write64(handle, slv_addr, cmd_code, data, pec);
 			break;
 		}
 
@@ -352,18 +366,22 @@ int main(int argc, char *argv[])
 	}
 	/**
 	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-block-write
-	 *                 <port> <target-address> <cmd-code> <data-byte(s)>
+	 *                 <port> <slv_addr> <cmd_code> <data>
 	 */
 	case FUNC_IDX_SMB_BLOCK_WRITE: {
 		if (argc < optind + 5)
-			main_exit(EXIT_FAILURE, handle, func_idx, "error: too few arguments\n");
+			main_exit(EXIT_FAILURE, handle, func_idx,
+			          "error: too few arguments\n");
+		else if (argc > optind + 4 + sizeof(block))
+			main_exit(EXIT_FAILURE, handle, func_idx,
+			          "error: too many arguments\n");
 
 		bit_rate = parse_bit_rate(bit_rate_opt);
 		if (bit_rate < 0)
 			goto exit;
 
-		slave_addr = parse_i2c_address(argv[optind + 2], all_addr);
-		if (slave_addr < 0)
+		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (slv_addr < 0)
 			goto exit;
 
 		cmd_code = parse_cmd_code(argv[optind + 3]);
@@ -373,26 +391,26 @@ int main(int argc, char *argv[])
 		// Setup the bit rate
 		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
 		if (real_bit_rate != bit_rate)
-			fprintf(stderr, "warning: the bitrate is different from user input\n");
-
-		if (argc > (int)sizeof(block) + optind + 4)
-			main_exit(EXIT_FAILURE, handle, func_idx, "error: too many arguments\n");
+			fprintf(stderr,
+			        "warning: the bitrate is different from user input\n");
 
 		int byte_cnt, value;
 		for (byte_cnt = 0; byte_cnt + optind + 4 < argc; byte_cnt++) {
 			value = strtol(argv[byte_cnt + optind + 4], &end, 0);
 			if (*end || value < 0)
-				main_exit(EXIT_FAILURE, handle, -1, "error: invalid data value '%s'\n",
+				main_exit(EXIT_FAILURE, handle, -1,
+				          "error: invalid data value '%s'\n",
 				          argv[byte_cnt + optind + 5]);
 
 			if (value > 0xff)
-				main_exit(EXIT_FAILURE, handle, -1, "error: data value '%s' out of range\n",
+				main_exit(EXIT_FAILURE, handle, -1,
+				          "error: data value '%s' out of range\n",
 				          argv[byte_cnt + optind + 5]);
 
 			block[byte_cnt] = value;
 		}
 
-		int ret = smbus_block_write(handle, slave_addr, cmd_code, byte_cnt,
+		int ret = smbus_block_write(handle, slv_addr, cmd_code, byte_cnt,
 		                            block, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
@@ -407,7 +425,8 @@ int main(int argc, char *argv[])
 		// Setup the bit rate
 		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
 		if (real_bit_rate != bit_rate)
-			fprintf(stderr, "warning: the bitrate is different from user input\n");
+			fprintf(stderr,
+			        "warning: the bitrate is different from user input\n");
 
 		int ret = smbus_arp_cmd_prepare_to_arp(handle, pec);
 		if (ret)
@@ -417,18 +436,22 @@ int main(int argc, char *argv[])
 	}
 	/**
 	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-file
-	 *                 <port> <target-address> <cmd-code> <file-name>
+	 *                 <port> <slv_addr> <cmd_code> <file_name>
 	 */
 	case FUNC_IDX_SMB_WRITE_FILE: {
 		if (argc < optind + 5)
-			main_exit(EXIT_FAILURE, handle, func_idx, "error: too few arguments\n");
+			main_exit(EXIT_FAILURE, handle, func_idx,
+			          "error: too few arguments\n");
+		else if (argc > optind + 5)
+			main_exit(EXIT_FAILURE, handle, func_idx,
+			          "error: too namy argumentds\n");
 
 		bit_rate = parse_bit_rate(bit_rate_opt);
 		if (bit_rate < 0)
 			goto exit;
 
-		slave_addr = parse_i2c_address(argv[optind + 2], all_addr);
-		if (slave_addr < 0)
+		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (slv_addr < 0)
 			goto exit;
 
 		cmd_code = parse_cmd_code(argv[optind + 3]);
@@ -440,9 +463,11 @@ int main(int argc, char *argv[])
 		// Setup the bit rate
 		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
 		if (real_bit_rate != bit_rate)
-			fprintf(stderr, "warning: the bitrate is different from user input\n");
+			fprintf(stderr,
+			        "warning: the bitrate is different from user input\n");
 
-		int ret = smbus_write_file(handle, slave_addr, cmd_code, file_name, pec);
+		int ret = smbus_write_file(
+		                  handle, slv_addr, cmd_code, file_name, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
@@ -457,8 +482,8 @@ int main(int argc, char *argv[])
 	}
 	case FUNC_IDX_I2C_MASTER_WRITE_FILE: {
 		if (argc < 5) {
-			printf("Usage: aa_i2c_file <port> <slave_addr> <file_name>\n");
-			printf("  slave_addr is the target slave address\n");
+			printf("Usage: aa_i2c_file <port> <slv_addr> <file_name>\n");
+			printf("  'slv_addr' is the target slave address\n");
 			printf("\n");
 			printf("  'file_name' should contain data to be sent\n");
 			printf("  to the downstream i2c device\n");
@@ -467,14 +492,14 @@ int main(int argc, char *argv[])
 
 		int ret = 0;
 		int port = atoi(argv[2]);
-		u8 slave_addr = (u8)strtol(argv[3], 0, 0);
+		u8 slv_addr = (u8)strtol(argv[3], 0, 0);
 		char *file_name = argv[4];
 
 		printf("port: %d\n", port);
-		printf("target: %02x\n", slave_addr);
+		printf("target: %02x\n", slv_addr);
 		printf("file_name: %s\n", file_name);
 
-		ret = aa_i2c_file(port, slave_addr, file_name);
+		ret = aa_i2c_file(port, slv_addr, file_name);
 		if (ret)
 			fprintf(stderr, "aa_i2c_file failed (%d)\n", ret);
 
@@ -482,8 +507,8 @@ int main(int argc, char *argv[])
 	}
 	case FUNC_IDX_I2C_SLAVE_POLL: {
 		if (argc < 5) {
-			printf("Usage: aai2c_slave <port> <slave_addr> <TIMEOUT_MS>\n");
-			printf("  slave_addr is the slave address for this device\n");
+			printf("Usage: aai2c_slave <port> <slv_addr> <timeout_ms>\n");
+			printf("  'slv_addr' is the slave address for this device\n");
 			printf("\n");
 			printf("  The timeout value specifies the time to\n");
 			printf("  block until the first packet is received.\n");
@@ -526,16 +551,17 @@ int main(int argc, char *argv[])
 	case FUNC_IDX_TEST: {
 		int ret = 0;
 		int port = atoi(argv[2]);
-		u8 slave_addr = (u8)strtol(argv[3], 0, 0);
+		u8 slv_addr = (u8)strtol(argv[3], 0, 0);
 		u8 dev_addr = (u8)strtol(argv[4], 0, 0);
 		int timeout_ms = atoi(argv[5]);
 
 		printf("port: %d\n", port);
-		printf("target: %02x,%02x\n", slave_addr, slave_addr >> 1);
+		printf("target: %02x,%02x\n", slv_addr, slv_addr >> 1);
 		printf("device: %02x,%02x\n", dev_addr, dev_addr >> 1);
 		printf("timeout(ms): %d\n", timeout_ms);
 
-		ret = test_smbus_controller_target_poll(port, slave_addr, dev_addr, timeout_ms);
+		ret = test_smbus_controller_target_poll(
+		              port, slv_addr, dev_addr, timeout_ms);
 		if (ret)
 			fprintf(stderr, "aa_smb_slave_poll failed (%d)\n", ret);
 

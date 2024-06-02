@@ -7,65 +7,138 @@ extern const struct function_list func_list[];
 
 void help(int func_idx)
 {
+	const char *func_name = func_list[func_idx].name;
+
 	switch (func_idx) {
 	case FUNC_IDX_SMB_SEND_BYTE:
 		printf(
-		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] %s "
-		        "                [port] [target-address] [<data-byte>...]\n\n"
+		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] %s\n"
+		        "                [port] [slv_addr] [<data>...]\n\n"
 		        "  option is one of:\n"
 		        "    -a (all range address)\n"
-		        "    -b (bit rate)\n"
+		        "    -b <bit-rate> (bit rate)\n"
 		        "    -c (pec)\n"
 		        "    -k (keep target power)\n"
 		        "    -p (enable target power)\n"
-		        "    -s (enable I2C slave mode)\n"
 		        "    -u (pull-up SCL and SDA)\n\n"
 		        "  'port' is an integer to indicate a valid port to use\n\n"
-		        "  'target-address' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
+		        "  'slv_addr' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
 		        "Example 1 (send data byte 0x5a to address 0x1d with pec):\n"
-		        "  # aardvark -cu smb-send-byte 0 0x1d 0x5a\n",
-		        func_list[FUNC_IDX_SMB_SEND_BYTE].name
+		        "  # aardvark -cu %s 0 0x1d 0x5a\n",
+		        func_name, func_name
+		);
+		break;
+	case FUNC_IDX_SMB_WRITE_BYTE:
+		printf(
+		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] %s\n"
+		        "                [port] [slv_addr] [cmd_code] [<data>...]\n\n"
+		        "  option is one of:\n"
+		        "    -a (all range address)\n"
+		        "    -b <bit-rate> (bit rate)\n"
+		        "    -c (pec)\n"
+		        "    -k (keep target power)\n"
+		        "    -p (enable target power)\n"
+		        "    -u (pull-up SCL and SDA)\n\n"
+		        "  'port' is an integer to indicate a valid port to use\n\n"
+		        "  'slv_addr' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
+		        "Example 1 (write data byte 0x5a to address 0x1d with command 0xf and pec):\n"
+		        "  # aardvark -cu %s 0 0x1d 0xf 0x5a\n",
+		        func_name, func_name
+		);
+		break;
+	case FUNC_IDX_SMB_WRITE_WORD:
+		printf(
+		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] %s\n"
+		        "                [port] [slv_addr] [cmd_code] [<data>...]\n\n"
+		        "  option is one of:\n"
+		        "    -a (all range address)\n"
+		        "    -b <bit-rate> (bit rate)\n"
+		        "    -c (pec)\n"
+		        "    -k (keep target power)\n"
+		        "    -p (enable target power)\n"
+		        "    -u (pull-up SCL and SDA)\n\n"
+		        "  'port' is an integer to indicate a valid port to use\n\n"
+		        "  'slv_addr' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
+		        "Example 1 (write data word 0x1234 to address 0x1d with command 0xf and pec):\n"
+		        "  # aardvark -cu %s 0 0x1d 0xf 0x1234\n",
+		        func_name, func_name
+		);
+		break;
+	case FUNC_IDX_SMB_WRITE_32:
+		printf(
+		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] %s\n"
+		        "                [port] [slv_addr] [cmd_code] [<data>...]\n\n"
+		        "  option is one of:\n"
+		        "    -a (all range address)\n"
+		        "    -b <bit-rate> (bit rate)\n"
+		        "    -c (pec)\n"
+		        "    -k (keep target power)\n"
+		        "    -p (enable target power)\n"
+		        "    -u (pull-up SCL and SDA)\n\n"
+		        "  'port' is an integer to indicate a valid port to use\n\n"
+		        "  'slv_addr' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
+		        "Example 1 (write double word 0x12345678 to address 0x1d with command 0xf and \n"
+		        "pec):\n"
+		        "  # aardvark -cu %s 0 0x1d 0xf 0x12345678\n",
+		        func_name, func_name
+		);
+		break;
+	case FUNC_IDX_SMB_WRITE_64:
+		printf(
+		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] %s\n"
+		        "                [port] [slv_addr] [cmd_code] [<data>...]\n\n"
+		        "  option is one of:\n"
+		        "    -a (all range address)\n"
+		        "    -b <bit-rate> (bit rate)\n"
+		        "    -c (pec)\n"
+		        "    -k (keep target power)\n"
+		        "    -p (enable target power)\n"
+		        "    -u (pull-up SCL and SDA)\n\n"
+		        "  'port' is an integer to indicate a valid port to use\n\n"
+		        "  'slv_addr' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
+		        "Example 1 (write quad word 0x1234567812345678 to address 0x1d with command 0xf \n"
+		        "and pec):\n"
+		        "  # aardvark -cu %s 0 0x1d 0xf 0x1234567812345678\n",
+		        func_name, func_name
 		);
 		break;
 	case FUNC_IDX_SMB_BLOCK_WRITE:
 		printf(
-		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] %s "
-		        "                [port] [target-address] [cmd-code] [<data-bytes>...]\n\n"
+		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] %s\n"
+		        "                [port] [slv_addr] [cmd_code] [<data>...]\n\n"
 		        "  option is one of:\n"
 		        "    -a (all range address)\n"
-		        "    -b (bit rate)\n"
+		        "    -b <bit-rate> (bit rate)\n"
 		        "    -c (pec)\n"
 		        "    -k (keep target power)\n"
 		        "    -p (enable target power)\n"
-		        "    -s (enable I2C slave mode)\n"
 		        "    -u (pull-up SCL and SDA)\n\n"
 		        "  'port' is an integer to indicate a valid port to use\n\n"
-		        "  'target-address' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
+		        "  'slv_addr' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
 		        "Example 1 (send data block to address 0x1a with command 0xf and pec):\n"
-		        "  # aardvark -cu smb-write-file 0 0x3a 0xf test.bin\n",
-		        func_list[FUNC_IDX_SMB_BLOCK_WRITE].name
+		        "  # aardvark -cu %s 0 0x3a 0xf test.bin\n",
+		        func_name, func_name
 		);
 		break;
 	case FUNC_IDX_SMB_WRITE_FILE:
 		printf(
-		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] %s "
-		        "                [port] [target-address] [cmd-code] [file-name]\n\n"
+		        "Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] %s\n"
+		        "                [port] [slv_addr] [cmd_code] [file_name]\n\n"
 		        "  option is one of:\n"
 		        "    -a (all range address)\n"
-		        "    -b (bit rate)\n"
+		        "    -b <bit-rate> (bit rate)\n"
 		        "    -c (pec)\n"
 		        "    -k (keep target power)\n"
 		        "    -p (enable target power)\n"
-		        "    -s (enable I2C slave mode)\n"
 		        "    -u (pull-up SCL and SDA)\n\n"
 		        "  'port' is an integer to indicate a valid port to use\n\n"
-		        "  'target-address' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
+		        "  'slv_addr' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
 		        "Example 1 (send test.bin to address 0x3a with command 0xf and pec):\n"
 		        "  # aardvark -cu smb-write-file 0 0x3a 0xf test.bin\n\n"
 		        "Example 2 (send test.bin to address 0x3a with command 0xf and pec, Also, turn\n"
 		        "  on the power and keep the power even if the function is complete):\n"
-		        "  # aardvark -kcpu smb-write-file 0 0x3a 0xf test.bin\n",
-		        func_list[FUNC_IDX_SMB_WRITE_FILE].name
+		        "  # aardvark -kcpu %s 0 0x3a 0xf test.bin\n",
+		        func_name, func_name
 		);
 		break;
 	default:
