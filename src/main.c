@@ -11,7 +11,6 @@
 #include "version.h"
 #include "types.h"
 #include "smbus.h"
-#include "smbus_core.h"
 
 const struct function_list func_list[] = {
 	{"detect", FUNC_IDX_DETECT},

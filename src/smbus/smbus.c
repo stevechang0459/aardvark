@@ -7,7 +7,6 @@
 #include "types.h"
 #include "aardvark.h"
 #include "smbus.h"
-#include "smbus_core.h"
 #include "crc.h"
 
 static u8 data[SMBUS_BUF_MAX];

@@ -4,7 +4,6 @@
 
 #include "mctp.h"
 #include "smbus.h"
-#include "smbus_core.h"
 
 #include "mctp_smbus.h"
 
