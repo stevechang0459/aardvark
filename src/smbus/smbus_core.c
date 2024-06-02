@@ -4,10 +4,10 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
+#include "types.h"
+#include "aardvark.h"
 #include "smbus.h"
 #include "smbus_core.h"
-#include "aardvark.h"
-#include "types.h"
 #include "crc.h"
 
 static u8 data[SMBUS_BUF_MAX];
@@ -74,7 +74,7 @@ static int smbus_verify_byte_read(int num_bytes, int num_read)
 	}
 }
 
-int smbus_send_byte(Aardvark handle, u8 slave_addr, u8 u8_data, u8 pec_flag)
+int smbus_send_byte(Aardvark handle, u8 slave_addr, u8 u8_data, bool pec_flag)
 {
 	int num_written, num_bytes;
 	data[0] = slave_addr << 1;
@@ -97,7 +97,7 @@ int smbus_send_byte(Aardvark handle, u8 slave_addr, u8 u8_data, u8 pec_flag)
 }
 
 int smbus_write_byte(Aardvark handle, u8 slave_addr, u8 cmd_code, u8 u8_data,
-                     u8 pec_flag)
+                     bool pec_flag)
 {
 	int num_written, num_bytes;
 	data[0] = slave_addr;
@@ -120,7 +120,7 @@ int smbus_write_byte(Aardvark handle, u8 slave_addr, u8 cmd_code, u8 u8_data,
 }
 
 int smbus_write_word(Aardvark handle, u8 slave_addr, u8 cmd_code, u16 u16_data,
-                     u8 pec_flag)
+                     bool pec_flag)
 {
 	int num_written, num_bytes;
 	data[0] = slave_addr;
@@ -144,7 +144,7 @@ int smbus_write_word(Aardvark handle, u8 slave_addr, u8 cmd_code, u16 u16_data,
 }
 
 int smbus_write32(Aardvark handle, u8 slave_addr, u8 cmd_code, u32 u32_data,
-                  u8 pec_flag)
+                  bool pec_flag)
 {
 	int num_written, num_bytes;
 	data[0] = slave_addr;
@@ -170,7 +170,7 @@ int smbus_write32(Aardvark handle, u8 slave_addr, u8 cmd_code, u32 u32_data,
 }
 
 int smbus_write64(Aardvark handle, u8 slave_addr, u8 cmd_code, u64 u64_data,
-                  u8 pec_flag)
+                  bool pec_flag)
 {
 	int num_written, num_bytes;
 	data[0] = slave_addr;
@@ -200,7 +200,7 @@ int smbus_write64(Aardvark handle, u8 slave_addr, u8 cmd_code, u64 u64_data,
 }
 
 int smbus_block_write(Aardvark handle, u8 slave_addr, u8 cmd_code,
-                      u8 byte_cnt, const void *buf, u8 pec_flag)
+                      u8 byte_cnt, const void *buf, bool pec_flag)
 {
 	int ret, status;
 	u16 num_bytes, num_written;
@@ -241,7 +241,7 @@ finish:
 }
 
 int smbus_write_file(Aardvark handle, u8 slave_addr, u8 cmd_code,
-                     const char *file_name, u8 pec_flag)
+                     const char *file_name, bool pec_flag)
 {
 	int ret, status;
 	// Open the file

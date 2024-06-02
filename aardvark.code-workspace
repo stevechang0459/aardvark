@@ -20,7 +20,13 @@
             "aardvark_app.h": "c",
             "unistd.h": "c",
             "getopt.h": "c",
-            "stdbool.h": "c"
+            "stdbool.h": "c",
+            "mctp.h": "c",
+            "stddef.h": "c",
+            "mctp_transport.h": "c",
+            "mctp_smbus.h": "c",
+            "smbus_core.h": "c",
+            "version.h": "c"
         }
     }
 }

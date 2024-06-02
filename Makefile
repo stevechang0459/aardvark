@@ -15,6 +15,7 @@ SUBDIR = \
 	src/utility \
 	src/aardvark \
 	src/smbus \
+	src/mctp \
 
 COMMON_INCLUDE = \
 	$(CURDIR)/include \
@@ -47,6 +48,7 @@ LDFLAGS = \
 LIBS = \
 	main \
 	smbus \
+	mctp \
 	aardvark \
 	checksum \
 	crc \

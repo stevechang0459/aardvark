@@ -7,6 +7,7 @@
 #include "aardvark_app.h"
 #include "version.h"
 #include "types.h"
+#include "smbus.h"
 #include "smbus_core.h"
 
 typedef enum _aa_func_idx_e {
