@@ -401,24 +401,18 @@ int main(int argc, char *argv[])
 		if (cmd_code < 0)
 			goto exit;
 
-		// Setup the bit rate
-		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
-		if (real_bit_rate != bit_rate)
-			fprintf(stderr,
-			        "warning: the bitrate is different from user input\n");
-
 		int byte_cnt, value;
 		for (byte_cnt = 0; byte_cnt < argc - (optind + 4); byte_cnt++) {
 			value = strtol(argv[byte_cnt + optind + 4], &end, 0);
 			if (*end || value < 0)
 				main_exit(EXIT_FAILURE, handle, -1,
 				          "error: invalid data value '%s'\n",
-				          argv[byte_cnt + optind + 5]);
+				          argv[byte_cnt + optind + 4]);
 
 			if (value > 0xff)
 				main_exit(EXIT_FAILURE, handle, -1,
 				          "error: data value '%s' out of range\n",
-				          argv[byte_cnt + optind + 5]);
+				          argv[byte_cnt + optind + 4]);
 
 			block[byte_cnt] = value;
 		}
@@ -488,14 +482,44 @@ int main(int argc, char *argv[])
 		if (slv_addr < 0)
 			goto exit;
 
-		int ret = smbus_arp_cmd_reset_device(handle, slv_addr, 0, 1);
+		int ret = smbus_arp_cmd_reset_device(handle, slv_addr, 0, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
 		break;
 	}
-	case FUNC_IDX_SMB_ASSIGN_ADDR:
+	case FUNC_IDX_SMB_ASSIGN_ADDR: {
+		union udid_ds udid;
+		if (check_argc(argc, optind + 3 + sizeof(udid),
+		               optind + 3 + sizeof(udid)))
+			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
+
+		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (slv_addr < 0)
+			goto exit;
+
+		int byte_cnt, value;
+		for (byte_cnt = 0; byte_cnt < argc - (optind + 3); byte_cnt++) {
+			value = strtol(argv[byte_cnt + optind + 3], &end, 0);
+			if (*end || value < 0)
+				main_exit(EXIT_FAILURE, handle, -1,
+				          "error: invalid data value '%s'\n",
+				          argv[byte_cnt + optind + 3]);
+
+			if (value > 0xff)
+				main_exit(EXIT_FAILURE, handle, -1,
+				          "error: data value '%s' out of range\n",
+				          argv[byte_cnt + optind + 3]);
+
+			block[byte_cnt] = value;
+		}
+
+		int ret = smbus_arp_cmd_assign_address(handle, &udid, slv_addr, pec);
+		if (ret)
+			main_exit(EXIT_FAILURE, handle, -1, NULL);
+
 		break;
+	}
 	/**
 	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-file
 	 *                 <port> <slv_addr> <cmd_code> <file_name>

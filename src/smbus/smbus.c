@@ -476,7 +476,7 @@ finish:
  * @brief The ARP Controller assigns an address to a specific device with this
  * command.
  */
-int smbus_arp_cmd_assign_address(Aardvark handle, const void *udid, u8 dev_tar_addr,
+int smbus_arp_cmd_assign_address(Aardvark handle, const union udid_ds *udid, u8 dev_tar_addr,
                                  bool pec_flag)
 {
 	int ret, status;
@@ -488,11 +488,11 @@ int smbus_arp_cmd_assign_address(Aardvark handle, const void *udid, u8 dev_tar_a
 	u8 slv_addr = SMBUS_ADDR_DEFAULT;
 	data[0] = slv_addr << 1;
 	data[1] = SMBUS_ARP_ASSIGN_ADDRESS;
-	data[2] = 17;
+	data[2] = sizeof(*udid) + 1;
 	// Byte[18:3]
-	memcpy(&data[3], udid, 16);
-	data[19] = dev_tar_addr << 1;
-	num_bytes = 19;
+	memcpy(&data[3], udid, sizeof(*udid));
+	num_bytes = 3 + sizeof(*udid);
+	data[num_bytes] = dev_tar_addr << 1;
 	if (pec_flag) {
 		++num_bytes;
 		data[num_bytes] = crc8(data, num_bytes);
