@@ -12,6 +12,8 @@
 #include "types.h"
 #include "smbus.h"
 
+#include "utility.h"
+
 const struct function_list func_list[] = {
 	{"detect", FUNC_IDX_DETECT},
 	{"smb-send-byte", FUNC_IDX_SMB_SEND_BYTE},
@@ -23,6 +25,8 @@ const struct function_list func_list[] = {
 	// SMBus Address Resolution Protocol
 	{"prepare-to-arp", FUNC_IDX_SMB_PREPARE_TO_ARP},
 	{"get-udid", FUNC_IDX_SMB_GET_UDID},
+	{"reset-device", FUNC_IDX_SMB_RESET_DEVICE},
+	{"assign-address", FUNC_IDX_SMB_ASSIGN_ADDR},
 	// Application
 	{"smb-write-file", FUNC_IDX_SMB_WRITE_FILE},
 	{"i2c-write-file", FUNC_IDX_I2C_MASTER_WRITE_FILE},
@@ -95,6 +99,19 @@ int parse_i2c_address(const char *addr_opt, int all_addrs)
 	}
 
 	return address;
+}
+
+static int check_argc(int argc, int min, int max)
+{
+	if (argc < min) {
+		fprintf(stderr, "error: too few arguments\n");
+		return argc - min;
+	} else if (argc > max) {
+		fprintf(stderr, "error: too many arguments\n");
+		return argc - max;
+	}
+
+	return 0;
 }
 
 static void main_exit(int status_code, int handle, int func_idx,
@@ -229,6 +246,16 @@ int main(int argc, char *argv[])
 	// Ensure that the I2C subsystem is enabled
 	aa_configure(handle, AA_CONFIG_GPIO_I2C);
 
+	bit_rate = parse_bit_rate(bit_rate_opt);
+	if (bit_rate < 0)
+		goto exit;
+
+	// Setup the bit rate
+	real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
+	if (real_bit_rate != bit_rate)
+		fprintf(stderr,
+		        "warning: the bitrate is different from user input\n");
+
 	/**
 	 * Enable the I2C bus pullup resistors (2.2k resistors). This command is
 	 * only effective on v2.0 hardware or greater. The pullup resistors on the
@@ -264,16 +291,8 @@ int main(int argc, char *argv[])
 	 *                 <port> <slv_addr> <data>
 	 */
 	case FUNC_IDX_SMB_SEND_BYTE: {
-		if (argc < optind + 4)
-			main_exit(EXIT_FAILURE, handle, func_idx,
-			          "error: too few arguments\n");
-		else if (argc > optind + 4)
-			main_exit(EXIT_FAILURE, handle, func_idx,
-			          "error: too many arguments\n");
-
-		bit_rate = parse_bit_rate(bit_rate_opt);
-		if (bit_rate < 0)
-			goto exit;
+		if (check_argc(argc, optind + 4, optind + 4))
+			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
@@ -306,16 +325,8 @@ int main(int argc, char *argv[])
 	case FUNC_IDX_SMB_WRITE_WORD:
 	case FUNC_IDX_SMB_WRITE_32:
 	case FUNC_IDX_SMB_WRITE_64: {
-		if (argc < optind + 5)
-			main_exit(EXIT_FAILURE, handle, func_idx,
-			          "error: too few arguments\n");
-		else if (argc > optind + 5)
-			main_exit(EXIT_FAILURE, handle, func_idx,
-			          "error: too many arguments\n");
-
-		bit_rate = parse_bit_rate(bit_rate_opt);
-		if (bit_rate < 0)
-			goto exit;
+		if (check_argc(argc, optind + 5, optind + 5))
+			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
@@ -379,16 +390,8 @@ int main(int argc, char *argv[])
 	 *                 <port> <slv_addr> <cmd_code> <data>
 	 */
 	case FUNC_IDX_SMB_BLOCK_WRITE: {
-		if (argc < optind + 5)
-			main_exit(EXIT_FAILURE, handle, func_idx,
-			          "error: too few arguments\n");
-		else if (argc > optind + 4 + sizeof(block))
-			main_exit(EXIT_FAILURE, handle, func_idx,
-			          "error: too many arguments\n");
-
-		bit_rate = parse_bit_rate(bit_rate_opt);
-		if (bit_rate < 0)
-			goto exit;
+		if (check_argc(argc, optind + 5, optind + 4 + sizeof(block)))
+			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
@@ -405,7 +408,7 @@ int main(int argc, char *argv[])
 			        "warning: the bitrate is different from user input\n");
 
 		int byte_cnt, value;
-		for (byte_cnt = 0; byte_cnt + optind + 4 < argc; byte_cnt++) {
+		for (byte_cnt = 0; byte_cnt < argc - (optind + 4); byte_cnt++) {
 			value = strtol(argv[byte_cnt + optind + 4], &end, 0);
 			if (*end || value < 0)
 				main_exit(EXIT_FAILURE, handle, -1,
@@ -428,22 +431,8 @@ int main(int argc, char *argv[])
 		break;
 	}
 	case FUNC_IDX_SMB_PREPARE_TO_ARP: {
-		if (argc < optind + 3)
-			main_exit(EXIT_FAILURE, handle, func_idx,
-			          "error: too few arguments\n");
-		else if (argc > optind + 3)
-			main_exit(EXIT_FAILURE, handle, func_idx,
-			          "error: too many arguments\n");
-
-		bit_rate = parse_bit_rate(bit_rate_opt);
-		if (bit_rate < 0)
-			goto exit;
-
-		// Setup the bit rate
-		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
-		if (real_bit_rate != bit_rate)
-			fprintf(stderr,
-			        "warning: the bitrate is different from user input\n");
+		if (check_argc(argc, optind + 2, optind + 2))
+			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
 		int ret = smbus_arp_cmd_prepare_to_arp(handle, pec);
 		if (ret)
@@ -452,42 +441,68 @@ int main(int argc, char *argv[])
 		break;
 	}
 	case FUNC_IDX_SMB_GET_UDID: {
-		bit_rate = parse_bit_rate(bit_rate_opt);
-		if (bit_rate < 0)
-			goto exit;
-
-		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
-		if (real_bit_rate != bit_rate)
-			fprintf(stderr,
-			        "warning: the bitrate is different from user input (%d,%d)\n",
-			        real_bit_rate, bit_rate);
+		if (check_argc(argc, optind + 3, optind + 3))
+			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
 			goto exit;
 
-		u8 udid[16];
-		int ret = smbus_arp_cmd_get_udid(handle, udid, slv_addr, 0, pec);
+		union udid_ds udid;
+		int ret = smbus_arp_cmd_get_udid(handle, (void *)&udid, slv_addr, 0, pec);
+		if (ret)
+			main_exit(EXIT_FAILURE, handle, -1, NULL);
+
+		reverse(&udid, sizeof(udid));
+
+		fprintf(stderr, "sizeof udid_ds:%d\n", sizeof(union udid_ds));
+
+		fprintf(stderr, "udid.dev_cap.value: %x\n", udid.dev_cap.value);
+		fprintf(stderr, "PEC Supported: %d\n", udid.dev_cap.pec_sup);
+		fprintf(stderr, "Address Type: %d\n", udid.dev_cap.addr_type);
+
+		fprintf(stderr, "udid.ver_rev.value: %d\n", udid.ver_rev.value);
+		fprintf(stderr, "Silicon Revision ID: %d\n", udid.ver_rev.si_rev_id);
+		fprintf(stderr, "UDID Version: %d\n", udid.ver_rev.udid_ver);
+
+		fprintf(stderr, "Vendor ID: %04x\n", udid.vendor_id);
+		fprintf(stderr, "Device ID: %04x\n", udid.device_id);
+
+		fprintf(stderr, "udid.interface.value: %x\n", udid.interface.value);
+		fprintf(stderr, "SMBus Version: %d\n", udid.interface.smbus_ver);
+		fprintf(stderr, "OEM: %d\n", udid.interface.oem);
+		fprintf(stderr, "ASF: %d\n", udid.interface.asf);
+		fprintf(stderr, "IPMI: %d\n", udid.interface.ipmi);
+		fprintf(stderr, "ZONE: %d\n", udid.interface.zone);
+
+		fprintf(stderr, "Subsystem Vendor ID: %04x\n", udid.subsys_vendor_id);
+		fprintf(stderr, "Subsystem Device ID: %04x\n", udid.subsys_device_id);
+		fprintf(stderr, "Vendor Specific ID: %08x\n", udid.vendor_spec_id);
+		break;
+	}
+	case FUNC_IDX_SMB_RESET_DEVICE: {
+		if (check_argc(argc, optind + 3, optind + 3))
+			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
+
+		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (slv_addr < 0)
+			goto exit;
+
+		int ret = smbus_arp_cmd_reset_device(handle, slv_addr, 0, 1);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
 		break;
 	}
+	case FUNC_IDX_SMB_ASSIGN_ADDR:
+		break;
 	/**
 	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-file
 	 *                 <port> <slv_addr> <cmd_code> <file_name>
 	 */
 	case FUNC_IDX_SMB_WRITE_FILE: {
-		if (argc < optind + 5)
-			main_exit(EXIT_FAILURE, handle, func_idx,
-			          "error: too few arguments\n");
-		else if (argc > optind + 5)
-			main_exit(EXIT_FAILURE, handle, func_idx,
-			          "error: too namy argumentds\n");
-
-		bit_rate = parse_bit_rate(bit_rate_opt);
-		if (bit_rate < 0)
-			goto exit;
+		if (check_argc(argc, optind + 5, optind + 5))
+			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
@@ -498,12 +513,6 @@ int main(int argc, char *argv[])
 			goto exit;
 
 		file_name = argv[optind + 4];
-
-		// Setup the bit rate
-		real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
-		if (real_bit_rate != bit_rate)
-			fprintf(stderr,
-			        "warning: the bitrate is different from user input\n");
 
 		int ret = smbus_write_file(
 		                  handle, slv_addr, cmd_code, file_name, pec);

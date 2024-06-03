@@ -9,6 +9,7 @@ void aligned_free(void *aligned_ptr);
 
 size_t strlen(const char *s);
 void print_buf(const void *buf, size_t size, char *title);
+void reverse(void *in, u32 len);
 
 #define DBGPRINT(filter, ...) \
     printf(__VA_ARGS__)

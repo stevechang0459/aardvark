@@ -14,6 +14,8 @@ enum function_index {
 	// SMBus Address Resolution Protocol
 	FUNC_IDX_SMB_PREPARE_TO_ARP,
 	FUNC_IDX_SMB_GET_UDID,
+	FUNC_IDX_SMB_RESET_DEVICE,
+	FUNC_IDX_SMB_ASSIGN_ADDR,
 	// Application
 	FUNC_IDX_SMB_WRITE_FILE,
 

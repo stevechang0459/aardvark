@@ -62,7 +62,7 @@ union smbus_prepare_to_arp_ds {
 		u8 slave_addr;
 		u8 cmd;
 		u8 pec;
-	};
+	} __attribute__((packed));
 	u8 data[3];
 } __attribute__((packed));
 
@@ -76,7 +76,7 @@ union smbus_get_udid_ds {
 		// Device Target Address
 		u8 dev_tar_addr;
 		u8 pec;
-	};
+	} __attribute__((packed));
 	u8 data[22];
 } __attribute__((packed));
 
@@ -85,7 +85,7 @@ union smbus_reset_device_ds {
 		u8 slave_addr;
 		u8 cmd;
 		u8 pec;
-	};
+	} __attribute__((packed));
 	u8 data[3];
 } __attribute__((packed));
 
@@ -99,9 +99,67 @@ union smbus_assign_address_ds {
 		// Device Target Address
 		u8 dev_tar_addr;
 		u8 pec;
-	};
+	} __attribute__((packed));
 	u8 data[22];
 } __attribute__((packed));
+
+union udid_device_capabilities {
+	struct {
+		// PEC Supported
+		u8 pec_sup : 1;
+		// Reserved
+		u8 rsvd : 5;
+		// Address Type
+		u8 addr_type : 2;
+	};
+	u8 value;
+} __attribute__((packed));
+
+union udid_version_revision {
+	struct {
+		// Silicon Revision ID
+		u8 si_rev_id : 3;
+		// UDID Version
+		u8 udid_ver : 3;
+		// Reserved
+		u8 rsvd : 2;
+	};
+	u8 value;
+} __attribute__((packed));
+
+union udid_interface {
+	struct {
+		struct {
+			u8 smbus_ver : 4;
+			u8 oem : 1;
+			u8 asf : 1;
+			u8 ipmi : 1;
+			u8 zone : 1;
+		};
+		u8 rsvd;
+	} __attribute__((packed));;
+	u16 value;
+} __attribute__((packed));
+
+union udid_ds {
+	struct {
+		u32 vendor_spec_id;
+		u16 subsys_device_id;
+		u16 subsys_vendor_id;
+		// Interface
+		union udid_interface interface;
+		// Device ID
+		u16 device_id;
+		// Vendor ID
+		u16 vendor_id;
+		// Version/Revision
+		union udid_version_revision ver_rev;
+		// Device Capabilities
+		union udid_device_capabilities dev_cap;
+	} __attribute__((packed));
+	u8 data[16];
+} __attribute__((packed));
+
 
 int smbus_send_byte(Aardvark handle, u8 slv_addr, u8 data, bool pec_flag);
 int smbus_write_byte(Aardvark handle, u8 slv_addr, u8 cmd_code, u8 data,
