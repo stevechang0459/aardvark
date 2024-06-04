@@ -104,3 +104,20 @@ void print_buf(const void *buf, size_t size, char *title)
 
 	printf("\n\n");
 }
+
+void reverse(void *in, u32 len)
+{
+	char *c1 = in;
+	char *c2 = in + len - 1;
+
+	while (1) {
+		*c1 = *c1 ^ *c2;        // x = a ^ b
+		*c2 = *c1 ^ *c2;        // b = (a = x ^ b)
+		*c1 = *c1 ^ *c2;        // a = (b = x ^ a)
+		c1++;
+		c2--;
+		if (c1 >= c2) {
+			break;
+		}
+	}
+}

@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-extern u32 crc32(const char *data, int length);
+u32 crc32(const void *buf, size_t len);
 
 #endif // ~ CRC32_H
