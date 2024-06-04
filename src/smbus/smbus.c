@@ -362,7 +362,7 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 tar_addr,
 	u8 slv_addr = SMBUS_ADDR_DEFAULT;
 	data[0] = slv_addr << 1;
 	if (directed)
-		data[1] = tar_addr << 1 | 1;
+		data[1] = tar_addr << 1 | I2C_READ;
 	else
 		data[1] = SMBUS_ARP_GET_UDID;
 	data[2] = slv_addr << 1 | I2C_READ;
@@ -441,7 +441,7 @@ int smbus_arp_cmd_reset_device(Aardvark handle, u8 tar_addr, u8 directed,
 	u8 slv_addr = SMBUS_ADDR_DEFAULT;
 	data[0] = slv_addr << 1;
 	if (directed)
-		data[1] = tar_addr << 1;
+		data[1] = tar_addr << 1 | I2C_WRITE;
 	else
 		data[1] = SMBUS_ARP_RESET_DEVICE;
 	num_bytes = 1;
@@ -450,7 +450,7 @@ int smbus_arp_cmd_reset_device(Aardvark handle, u8 tar_addr, u8 directed,
 		data[num_bytes] = crc8(data, num_bytes);
 	}
 	status = aa_i2c_write_ext(handle, slv_addr, AA_I2C_NO_FLAGS, num_bytes,
-	                          data, &num_written);
+	                          &data[1], &num_written);
 	if (unlikely(status)) {
 		fprintf(stderr, "[%s]:aa_i2c_write_ext failed (%d)\n", __FUNCTION__,
 		        status);

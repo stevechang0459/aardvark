@@ -29,10 +29,10 @@ const struct function_list func_list[] = {
 	{"assign-address", FUNC_IDX_SMB_ASSIGN_ADDR},
 	// Application
 	{"smb-write-file", FUNC_IDX_SMB_WRITE_FILE},
-	{"i2c-write-file", FUNC_IDX_I2C_MASTER_WRITE_FILE},
-	{"i2c-slave-poll", FUNC_IDX_I2C_SLAVE_POLL},
-	{"smb-dev-poll", FUNC_IDX_SMB_DEVICE_POLL},
-	{"test-smb-ctrl-tar", FUNC_IDX_TEST},
+	// {"i2c-write-file", FUNC_IDX_I2C_MASTER_WRITE_FILE},
+	// {"i2c-slave-poll", FUNC_IDX_I2C_SLAVE_POLL},
+	// {"smb-dev-poll", FUNC_IDX_SMB_DEVICE_POLL},
+	// {"test-smb-ctrl-tar", FUNC_IDX_TEST},
 
 	{NULL}
 };
@@ -156,7 +156,8 @@ int main(int argc, char *argv[])
 	Aardvark handle = 0;
 	char *end, *bit_rate_opt = NULL;
 	int func_idx = FUNC_IDX_NULL;
-	int all_addr = 0, pec = 0,  power = 0, pull_up = 0, version = 0, manual = 0;
+	int all_addr = 0, pec = 0,  power = 0, pull_up = 0, version = 0, manual = 0,
+	    directed = 0;
 	int opt, port, real_bit_rate, bit_rate, slv_addr, cmd_code,
 	    i2c_slave_mode;
 	const char *file_name;
@@ -164,7 +165,7 @@ int main(int argc, char *argv[])
 	real_bit_rate = bit_rate = I2C_DEFAULT_BITRATE;
 
 	/* handle (optional) flags first */
-	while ((opt = getopt(argc, argv, "ab:chkpsuv")) != -1) {
+	while ((opt = getopt(argc, argv, "ab:cdhkpsuv")) != -1) {
 		switch (opt) {
 		case 'a':
 			all_addr = 1;
@@ -174,6 +175,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'c':
 			pec = 1;
+			break;
+		case 'd':
+			directed = 1;
 			break;
 		case 'k':
 			m_keep_power = 1;
@@ -435,21 +439,28 @@ int main(int argc, char *argv[])
 		break;
 	}
 	case FUNC_IDX_SMB_GET_UDID: {
-		if (check_argc(argc, optind + 3, optind + 3))
-			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
+		slv_addr = 0;
+		if (directed) {
+			if (check_argc(argc, optind + 3, optind + 3))
+				main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
-		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
-		if (slv_addr < 0)
-			goto exit;
+			slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+			if (slv_addr < 0)
+				goto exit;
+		} else {
+			if (check_argc(argc, optind + 2, optind + 2))
+				main_exit(EXIT_FAILURE, handle, func_idx, NULL);
+		}
 
 		union udid_ds udid;
-		int ret = smbus_arp_cmd_get_udid(handle, (void *)&udid, slv_addr, 0, pec);
+		int ret = smbus_arp_cmd_get_udid(handle, (void *)&udid, slv_addr,
+		                                 directed, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
 		reverse(&udid, sizeof(udid));
 
-		fprintf(stderr, "sizeof udid_ds:%d\n", sizeof(union udid_ds));
+		fprintf(stderr, "sizeof(udid_ds):%d\n", sizeof(union udid_ds));
 
 		fprintf(stderr, "udid.dev_cap.value: %x\n", udid.dev_cap.value);
 		fprintf(stderr, "PEC Supported: %d\n", udid.dev_cap.pec_sup);
@@ -475,14 +486,20 @@ int main(int argc, char *argv[])
 		break;
 	}
 	case FUNC_IDX_SMB_RESET_DEVICE: {
-		if (check_argc(argc, optind + 3, optind + 3))
-			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
+		slv_addr = 0;
+		if (directed) {
+			if (check_argc(argc, optind + 3, optind + 3))
+				main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
-		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
-		if (slv_addr < 0)
-			goto exit;
+			slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+			if (slv_addr < 0)
+				goto exit;
+		} else {
+			if (check_argc(argc, optind + 2, optind + 2))
+				main_exit(EXIT_FAILURE, handle, func_idx, NULL);
+		}
 
-		int ret = smbus_arp_cmd_reset_device(handle, slv_addr, 0, pec);
+		int ret = smbus_arp_cmd_reset_device(handle, slv_addr, directed, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
@@ -511,7 +528,7 @@ int main(int argc, char *argv[])
 				          "error: data value '%s' out of range\n",
 				          argv[byte_cnt + optind + 3]);
 
-			block[byte_cnt] = value;
+			udid.data[byte_cnt] = value;
 		}
 
 		int ret = smbus_arp_cmd_assign_address(handle, &udid, slv_addr, pec);
@@ -545,6 +562,7 @@ int main(int argc, char *argv[])
 
 		break;
 	}
+#if 0
 	case FUNC_IDX_I2C_MASTER_WRITE_FILE: {
 		if (argc < 5) {
 			printf("Usage: aa_i2c_file <port> <slv_addr> <file_name>\n");
@@ -632,6 +650,7 @@ int main(int argc, char *argv[])
 
 		break;
 	}
+#endif
 	default:
 		break;
 	}

@@ -180,7 +180,7 @@ int smbus_arp_cmd_reset_device(Aardvark handle, u8 slv_addr, u8 directed,
                                bool pec_flag);
 int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 slv_addr,
                            bool directed, bool pec_flag);
-int smbus_arp_cmd_assign_address(Aardvark handle, const void *udid, u8 slv_addr,
-                                 bool pec_flag);
+int smbus_arp_cmd_assign_address(Aardvark handle, const union udid_ds *udid,
+                                 u8 dev_tar_addr, bool pec_flag);
 
 #endif // ~ SMBUS_H
