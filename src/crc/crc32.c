@@ -1,6 +1,10 @@
+#include "crc32.h"
+
+#include "types.h"
+#include <stdbool.h>
+
 #include <stddef.h>
 #include <stdint.h>
-#include "types.h"
 
 /*****************************************************************/
 /*                                                               */
@@ -93,8 +97,6 @@ static const u32 crc_table[256] = {
 /*                   End of CRC Lookup Table                     */
 /*****************************************************************/
 
-#define CRC_INIT    (0xffffffffL)
-#define XO_ROT      (0xffffffffL)
 u32 crc32(const void *buf, size_t len)
 {
 	const char *data = buf;
@@ -110,3 +112,50 @@ u32 crc32(const void *buf, size_t len)
 
 	return crc;
 }
+
+u32 crc32_tableless(const void *buf, size_t len)
+{
+	const char *data = buf;
+	u32 crc = CRC_INIT;
+	while (len--) {
+		crc ^= *data++;
+		for (int i = 0; i < 8; i++)
+			crc = crc & 1 ? (crc >> 1) ^ REVERSED_POLY : crc >> 1;
+	}
+	return crc ^ XO_ROT;
+}
+
+static u32 crc_table2[16] = {
+	0x00000000, 0x105EC76F, 0x20BD8EDE, 0x30E349B1,
+	0x417B1DBC, 0x5125DAD3, 0x61C69362, 0x7198540D,
+	0x82F63B78, 0x92A8FC17, 0xA24BB5A6, 0xB21572C9,
+	0xC38D26C4, 0xD3D3E1AB, 0xE330A81A, 0xF36E6F75
+};
+
+u32 crc32_halfbyte(const void *buf, size_t len)
+{
+	u32 crc = CRC_INIT;
+	const char *data = buf;
+
+	while (len--) {
+		crc = crc_table2[(crc ^  *data) & 0x0F] ^ (crc >> 4);
+		crc = crc_table2[(crc ^ (*data >> 4)) & 0x0F] ^ (crc >> 4);
+		data++;
+	}
+
+	return ~crc;
+}
+
+// void half_byte_table_generator(void)
+// {
+//      printf("[%s]\n", __FUNCTION__);
+
+//      for (unsigned int i = 0; i < 16; i++) {
+//              unsigned int crc = i;
+//              for (unsigned int j = 0; j < 4; j++)
+//                      crc = (crc >> 1) ^ (-(int)(crc & 1) & REVERSED_POLY);
+
+//              lut[i] = crc;
+//              printf("0x%08X\n", crc);
+//      }
+// }

@@ -14,7 +14,7 @@
 #define I2C_DEFAULT_BITRATE             100
 
 // 0010_000xb
-#define SMBUS_ADDR_IPMI_BMC				(0x10)
+#define SMBUS_ADDR_IPMI_BMC             (0x10)
 // 1100_001xb, 0xC2, SMBus Device Default Address
 #define SMBUS_ADDR_DEFAULT              (0x61)
 // 1101_010xb, 0xD4, Basic Management Command

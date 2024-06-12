@@ -1,15 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stddef.h>
-
-#include <stdbool.h>
-#include "types.h"
-
 #include "mctp.h"
 #include "mctp_transport.h"
 #include "crc32.h"
 #include "utility.h"
+
+#include "types.h"
+#include <stdbool.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stddef.h>
 
 static u32 m_inst_id;
 
@@ -47,6 +47,8 @@ int mctp_send_control_request_message(
 		msg_size = mctp_message_append_mic(msg, msg_size);
 
 	print_buf(msg, msg_size, "[%s]: add mic (%d)", __FUNCTION__, msg_size);
+	fprintf(stderr, "crc: %x\n", crc32(msg, msg_size - 4));
+
 	return mctp_transport_send_message(
 	               slv_addr, dst_eid, msg, msg_size,
 	               MCTP_MSG_TYPE_NVME_MM, 1);
