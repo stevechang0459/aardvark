@@ -15,8 +15,8 @@ static u32 m_inst_id;
 
 u16 mctp_message_append_mic(void *msg, u16 msg_size)
 {
-	u32 mic = crc32(msg, msg_size);
-	memcpy((char *)msg + msg_size, &mic, sizeof(mic));
+	u32 mic = ~crc32_le_generic(CRC_INIT, msg, msg_size, REVERSED_POLY);
+	memcpy(msg + msg_size, &mic, sizeof(mic));
 	return msg_size + sizeof(mic);
 }
 
@@ -47,7 +47,8 @@ int mctp_send_control_request_message(
 		msg_size = mctp_message_append_mic(msg, msg_size);
 
 	print_buf(msg, msg_size, "[%s]: add mic (%d)", __FUNCTION__, msg_size);
-	fprintf(stderr, "crc: %x\n", crc32(msg, msg_size - 4));
+	fprintf(stderr, "crc: %x\n",
+	        ~crc32_le_generic(CRC_INIT, msg, msg_size - 4, REVERSED_POLY));
 
 	return mctp_transport_send_message(
 	               slv_addr, dst_eid, msg, msg_size,

@@ -4,6 +4,8 @@
 #include "types.h"
 #include <stddef.h>
 
+#define CRC_LE_BITS                     (8)
+
 // CRC-32C (Castagnoli)
 #define POLY                            (0x1EDC6F41L)
 /* CRC32C polynomial in reversed bit order. */
@@ -12,8 +14,9 @@
 #define CRC_INIT                        (0xffffffffL)
 #define XO_ROT                          (0xffffffffL)
 
-u32 crc32(const void *buf, size_t len);
-u32 crc32_halfbyte(const void *buf, size_t len);
-u32 crc32_tableless(const void *buf, size_t len);
+u32 crc32(u32 crc, const void *buf, size_t len);
+u32 crc32_halfbyte(u32 crc, const void *buf, size_t len);
+u32 crc32_tableless(u32 crc, const void *buf, size_t len, u32 poly);
+u32 crc32_le_generic(u32 crc, const void *buf, size_t len, u32 poly);
 
 #endif // ~ CRC32_H
