@@ -23,7 +23,7 @@ int mctp_smbus_transmit_packet(
         u8 dst_slv_addr, union mctp_smbus_packet *pkt, u8 tran_size)
 {
 	pkt->medi_head.src_slv_addr
-	        = m_mctp_smbus_mgr.slave_addr << 1 | MCTP_OVER_SMBUS;
+	        = m_mctp_smbus_mgr.src_slv_addr << 1 | MCTP_OVER_SMBUS;
 
 	int status = smbus_block_write(
 	                     m_mctp_smbus_mgr.handle,
@@ -41,13 +41,15 @@ int mctp_smbus_transmit_packet(
 		return MCTP_SUCCESS;
 }
 
-void mctp_smbus_init(int handle, u8 slave_addr, bool pec_flag)
+int mctp_smbus_init(int handle, u8 src_slv_addr, bool pec_flag)
 {
 	memset(&m_mctp_smbus_mgr, 0, sizeof(m_mctp_smbus_mgr));
 
-	m_mctp_smbus_mgr.slave_addr = slave_addr;
+	m_mctp_smbus_mgr.src_slv_addr = src_slv_addr;
 	m_mctp_smbus_mgr.pec_enabled = pec_flag;
 
 	if (handle)
 		mctp_smbus_set_handle(handle);
+
+	return MCTP_SUCCESS;
 }

@@ -12,6 +12,7 @@ INCLUDE = \
 	aardvark \
 	crc \
 	smbus \
+	utility \
 
 SRCS = $(wildcard *.c)
 

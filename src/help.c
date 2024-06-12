@@ -116,7 +116,7 @@ void help(int func_idx)
 		        "  'port' is an integer to indicate a valid port to use\n\n"
 		        "  'slv_addr' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
 		        "Example 1 (Send data block to address 0x1d with command 0xf and pec):\n"
-		        "  # aardvark -kcpu %s 0 0x1d 0xf test.bin\n"
+		        "  # aardvark -kcpu %s 0 0x1d 0xf 0x12 0x34\n"
 		        , func_name, func_name
 		);
 		break;
@@ -212,11 +212,29 @@ void help(int func_idx)
 		        "    -u (pull-up SCL and SDA)\n\n"
 		        "  'port' is an integer to indicate a valid port to use\n\n"
 		        "  'slv_addr' is an integer (0x08 - 0x77 or 0x00 - 0x7f if '-a' is given)\n\n"
-		        "Example 1 (send test.bin to address 0x3a with command 0xf and pec):\n"
-		        "  # aardvark -kcpu smb-write-file 0 0x3a 0xf test.bin\n\n"
-		        "Example 2 (send test.bin to address 0x3a with command 0xf and pec, Also, turn\n"
+		        "Example 1 (send test.bin to address 0x1d with command 0xf and pec):\n"
+		        "  # aardvark -cu %s 0 0x1d 0xf test.bin\n\n"
+		        "Example 2 (send test.bin to address 0x1d with command 0xf and pec, Also, turn\n"
 		        "  on the power and keep the power even if the function is complete):\n"
-		        "  # aardvark -kcpu %s 0 0x3a 0xf test.bin\n"
+		        "  # aardvark -kcpu %s 0 0x1d 0xf test.bin\n"
+		        , func_name, func_name, func_name
+		);
+		break;
+	case FUNC_IDX_TEST_MCTP:
+		printf(
+		        "Usage: aardvark [-a] [-b <bit-rate>] [-c] [-k] [-p] [-u] %s [port] [slv_addr]\n"
+		        "                [eid]\n\n"
+		        "  option is one of:\n"
+		        "    -a (all range address)\n"
+		        "    -b <bit-rate> (bit rate)\n"
+		        "    -c (pec)\n"
+		        "    -k (keep target power)\n"
+		        "    -p (enable target power)\n"
+		        "    -u (pull-up SCL and SDA)\n\n"
+		        "  'port' is an integer to indicate a valid port to use\n\n"
+		        "  'eid' is an integer (0x00, 0x08 - 0xfe)\n\n"
+		        "Example 1 (send test.bin to address 0x1d with command 0xf and pec):\n"
+		        "  # aardvark -kcpu %s 0 0x08\n\n"
 		        , func_name, func_name
 		);
 		break;

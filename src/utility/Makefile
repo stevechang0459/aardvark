@@ -8,7 +8,9 @@ DIR = utility
 
 SUBDIR =
 
-INCLUDE =
+INCLUDE = \
+	smbus \
+	aardvark \
 
 SRCS = $(wildcard *.c)
 

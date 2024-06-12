@@ -1,18 +1,24 @@
+#include "main.h"
+#include "help.h"
+#include "version.h"
+#include "utility.h"
+
+#include "aardvark_app.h"
+
+#include "smbus.h"
+#include "mctp.h"
+#include "mctp_core.h"
+#include "mctp_transport.h"
+#include "mctp_message.h"
+
+#include "types.h"
+#include <stdbool.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdarg.h>
-
-#include "main.h"
-#include "help.h"
-
-#include "aardvark_app.h"
-#include "version.h"
-#include "types.h"
-#include "smbus.h"
-
-#include "utility.h"
 
 const struct function_list func_list[] = {
 	{"detect", FUNC_IDX_DETECT},
@@ -29,6 +35,7 @@ const struct function_list func_list[] = {
 	{"assign-address", FUNC_IDX_SMB_ASSIGN_ADDR},
 	// Application
 	{"smb-write-file", FUNC_IDX_SMB_WRITE_FILE},
+	{"test-mctp", FUNC_IDX_TEST_MCTP},
 	// {"i2c-write-file", FUNC_IDX_I2C_MASTER_WRITE_FILE},
 	// {"i2c-slave-poll", FUNC_IDX_I2C_SLAVE_POLL},
 	// {"smb-dev-poll", FUNC_IDX_SMB_DEVICE_POLL},
@@ -39,6 +46,26 @@ const struct function_list func_list[] = {
 
 static int m_keep_power = 0;
 static u8 block[BLOCK_SIZE_MAX];
+
+int parse_eid(const char *eid_opt)
+{
+	int eid;
+	char *end;
+	eid = strtol(eid_opt, &end, 0);
+	if (*end || eid < 0) {
+		fprintf(stderr, "error: invalid eid '%s'\n", eid_opt);
+		return -1;
+	}
+
+	if ((eid != 0) && (eid < 0x08 || eid > 0xfe)) {
+		fprintf(stderr, "error: eid '%s' out of range "
+		        "(valid eid is: 0x00, 0x08-0x7e)\n",
+		        eid_opt);
+		return -2;
+	}
+
+	return eid;
+}
 
 int parse_cmd_code(const char *cmd_code_opt)
 {
@@ -280,9 +307,6 @@ int main(int argc, char *argv[])
 		aa_i2c_slave_enable(handle, SMBUS_ADDR_NVME_MI_BMC, 0, 0);
 
 	switch (func_idx) {
-	/**
-	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] detect <port>
-	 */
 	case FUNC_IDX_DETECT: {
 		int ret = aa_detect();
 		if (ret)
@@ -290,10 +314,6 @@ int main(int argc, char *argv[])
 
 		break;
 	}
-	/**
-	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-send-byte
-	 *                 <port> <slv_addr> <data>
-	 */
 	case FUNC_IDX_SMB_SEND_BYTE: {
 		if (check_argc(argc, optind + 4, optind + 4))
 			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
@@ -321,10 +341,6 @@ int main(int argc, char *argv[])
 
 		break;
 	}
-	/**
-	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-xxx
-	 *                 <port> <slv_addr> <cmd_code> <data>
-	 */
 	case FUNC_IDX_SMB_WRITE_BYTE:
 	case FUNC_IDX_SMB_WRITE_WORD:
 	case FUNC_IDX_SMB_WRITE_32:
@@ -389,10 +405,6 @@ int main(int argc, char *argv[])
 
 		break;
 	}
-	/**
-	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-block-write
-	 *                 <port> <slv_addr> <cmd_code> <data>
-	 */
 	case FUNC_IDX_SMB_BLOCK_WRITE: {
 		if (check_argc(argc, optind + 5, optind + 4 + sizeof(block)))
 			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
@@ -459,30 +471,7 @@ int main(int argc, char *argv[])
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
 		reverse(&udid, sizeof(udid));
-
-		fprintf(stderr, "sizeof(udid_ds):%d\n", sizeof(union udid_ds));
-
-		fprintf(stderr, "udid.dev_cap.value: %x\n", udid.dev_cap.value);
-		fprintf(stderr, "PEC Supported: %d\n", udid.dev_cap.pec_sup);
-		fprintf(stderr, "Address Type: %d\n", udid.dev_cap.addr_type);
-
-		fprintf(stderr, "udid.ver_rev.value: %d\n", udid.ver_rev.value);
-		fprintf(stderr, "Silicon Revision ID: %d\n", udid.ver_rev.si_rev_id);
-		fprintf(stderr, "UDID Version: %d\n", udid.ver_rev.udid_ver);
-
-		fprintf(stderr, "Vendor ID: %04x\n", udid.vendor_id);
-		fprintf(stderr, "Device ID: %04x\n", udid.device_id);
-
-		fprintf(stderr, "udid.interface.value: %x\n", udid.interface.value);
-		fprintf(stderr, "SMBus Version: %d\n", udid.interface.smbus_ver);
-		fprintf(stderr, "OEM: %d\n", udid.interface.oem);
-		fprintf(stderr, "ASF: %d\n", udid.interface.asf);
-		fprintf(stderr, "IPMI: %d\n", udid.interface.ipmi);
-		fprintf(stderr, "ZONE: %d\n", udid.interface.zone);
-
-		fprintf(stderr, "Subsystem Vendor ID: %04x\n", udid.subsys_vendor_id);
-		fprintf(stderr, "Subsystem Device ID: %04x\n", udid.subsys_device_id);
-		fprintf(stderr, "Vendor Specific ID: %08x\n", udid.vendor_spec_id);
+		print_udid(&udid);
 		break;
 	}
 	case FUNC_IDX_SMB_RESET_DEVICE: {
@@ -511,25 +500,27 @@ int main(int argc, char *argv[])
 		               optind + 3 + sizeof(udid)))
 			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
-		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
-		if (slv_addr < 0)
-			goto exit;
-
 		int byte_cnt, value;
 		for (byte_cnt = 0; byte_cnt < argc - (optind + 3); byte_cnt++) {
-			value = strtol(argv[byte_cnt + optind + 3], &end, 0);
+			value = strtol(argv[byte_cnt + optind + 2], &end, 0);
+			fprintf(stderr, "%02d, %02d, %02x\n", argc, byte_cnt + optind + 2, value);
 			if (*end || value < 0)
 				main_exit(EXIT_FAILURE, handle, -1,
 				          "error: invalid data value '%s'\n",
-				          argv[byte_cnt + optind + 3]);
+				          argv[byte_cnt + optind + 2]);
 
 			if (value > 0xff)
 				main_exit(EXIT_FAILURE, handle, -1,
 				          "error: data value '%s' out of range\n",
-				          argv[byte_cnt + optind + 3]);
+				          argv[byte_cnt + optind + 2]);
 
 			udid.data[byte_cnt] = value;
 		}
+
+		slv_addr = parse_i2c_address(argv[byte_cnt + optind + 2], all_addr);
+		if (slv_addr < 0)
+			goto exit;
+		fprintf(stderr, "%02d, %02d, %02x\n", argc, byte_cnt + optind + 2, slv_addr);
 
 		int ret = smbus_arp_cmd_assign_address(handle, &udid, slv_addr, pec);
 		if (ret)
@@ -537,10 +528,6 @@ int main(int argc, char *argv[])
 
 		break;
 	}
-	/**
-	 * Usage: aardvark [-a] [-b <bit-rate>] [-k] [-c] [-p] [-u] smb-write-file
-	 *                 <port> <slv_addr> <cmd_code> <file_name>
-	 */
 	case FUNC_IDX_SMB_WRITE_FILE: {
 		if (check_argc(argc, optind + 5, optind + 5))
 			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
@@ -559,6 +546,68 @@ int main(int argc, char *argv[])
 		                  handle, slv_addr, cmd_code, file_name, pec);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
+
+		break;
+	}
+	case FUNC_IDX_TEST_MCTP: {
+		int ret;
+		union udid_ds udid;
+		u8 owner_eid, tar_eid;
+
+		if (check_argc(argc, optind + 4, optind + 4))
+			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
+
+		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (slv_addr < 0)
+			goto exit;
+
+		owner_eid = parse_eid(argv[optind + 3]);
+		if (owner_eid < 0)
+			goto exit;
+
+		ret = smbus_arp_cmd_prepare_to_arp(handle, pec);
+		if (ret) {
+			fprintf(stderr, "smbus_arp_cmd_prepare_to_arp failed (%d)\n", ret);
+			goto exit;
+		}
+
+		ret = smbus_arp_cmd_get_udid(handle, &udid, slv_addr, 0, pec);
+		if (ret) {
+			fprintf(stderr, "smbus_arp_cmd_get_udid failed (%d)\n", ret);
+			goto exit;
+		}
+
+		reverse(&udid, sizeof(udid));
+		print_udid(&udid);
+		reverse(&udid, sizeof(udid));
+
+		ret = smbus_arp_cmd_assign_address(handle, &udid, slv_addr, pec);
+		if (ret) {
+			fprintf(stderr, "smbus_arp_cmd_assign_address failed (%d)\n", ret);
+			goto exit;
+		}
+
+		ret = smbus_arp_cmd_get_udid(handle, &udid, slv_addr, 1, pec);
+		if (ret) {
+			fprintf(stderr, "smbus_arp_cmd_get_udid failed (%d)\n", ret);
+			goto exit;
+		}
+		reverse(&udid, sizeof(udid));
+		print_udid(&udid);
+
+		owner_eid = (owner_eid == 0 ? 8 : owner_eid);
+		tar_eid = (owner_eid == 0xfe ? owner_eid - 1 : owner_eid + 1);
+
+		mctp_init(
+		        handle, owner_eid, tar_eid, SMBUS_ADDR_IPMI_BMC, MCTP_BASELINE_TRAN_UNIT_SIZE,
+		        pec);
+
+		ret = mctp_message_set_eid(
+		              slv_addr, EID_NULL_DST, SET_EID, tar_eid, 1, 0);
+		if (ret) {
+			fprintf(stderr, "mctp_message_set_eid failed (%d)\n", ret);
+			goto exit;
+		}
 
 		break;
 	}

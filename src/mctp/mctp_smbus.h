@@ -1,9 +1,11 @@
 #ifndef MCTP_SMBUS_H
 #define MCTP_SMBUS_H
 
-#include "types.h"
 #include "smbus.h"
 #include "mctp.h"
+
+#include "types.h"
+#include <stdbool.h>
 
 /**
  * DSP0236, Header version
@@ -64,11 +66,12 @@ union mctp_smbus_packet {
 
 struct mctp_smbus_manager {
 	int handle;
-	u8 slave_addr;
+	u8 src_slv_addr;
 	bool pec_enabled;
 };
 
 int mctp_smbus_transmit_packet(u8 dst_slv_addr, union mctp_smbus_packet *pkt,
                                u8 tran_size);
+int mctp_smbus_init(int handle, u8 src_slv_addr, bool pec_flag);
 
-#endif
+#endif // ~ MCTP_SMBUS_H

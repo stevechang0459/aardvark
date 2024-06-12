@@ -1,8 +1,10 @@
 #ifndef MCTP_TRANSPORT_H
 #define MCTP_TRANSPORT_H
 
-#include "types.h"
 #include "mctp.h"
+
+#include "types.h"
+#include <stdbool.h>
 
 union mctp_transport_status {
 	struct {
@@ -29,7 +31,7 @@ struct mctp_transport_manager {
 	u8 tran_size;
 	u8 owner_addr;
 	u8 owner_eid;
-	u8 eid;
+	u8 tar_eid;
 	u8 state;
 	u8 retry;
 	u8 pkt_seq;
@@ -37,5 +39,6 @@ struct mctp_transport_manager {
 
 int mctp_transport_send_message(u8 slave_addr, u8 dst_eid, const void *msg,
                                 u16 msg_size, u8 msg_type, u8 tag_owner);
+int mctp_transport_init(u8 owner_eid, u8 tar_eid, u16 nego_size);
 
 #endif

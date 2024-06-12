@@ -29,7 +29,11 @@
             "version.h": "c",
             "time.h": "c",
             "signal.h": "c",
-            "windows.h": "c"
+            "windows.h": "c",
+            "mctp_core.h": "c",
+            "stdint.h": "c",
+            "crc32.h": "c",
+            "smbus.h": "c"
         }
     }
 }

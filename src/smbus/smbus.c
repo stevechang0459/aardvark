@@ -203,11 +203,11 @@ int smbus_block_write(Aardvark handle, u8 slv_addr, u8 cmd_code,
 {
 	int ret, status;
 	u16 num_bytes, num_written;
-	data[0] = slv_addr << 1;
+	data[0] = slv_addr << 1 | I2C_WRITE;
 	data[1] = cmd_code;
 	data[2] = byte_cnt;
 	memcpy(&data[3], buf, byte_cnt);
-	num_bytes = byte_cnt + 2; // (cmd_code & byte_cnt)
+	num_bytes = byte_cnt + 2; // +2: cmd_code & byte_cnt
 
 	if (pec_flag) {
 		++num_bytes;
@@ -492,7 +492,7 @@ int smbus_arp_cmd_assign_address(Aardvark handle, const union udid_ds *udid, u8 
 	// Byte[18:3]
 	memcpy(&data[3], udid, sizeof(*udid));
 	num_bytes = 3 + sizeof(*udid);
-	data[num_bytes] = dev_tar_addr << 1;
+	data[num_bytes] = dev_tar_addr << 1 | 1;
 	if (pec_flag) {
 		++num_bytes;
 		data[num_bytes] = crc8(data, num_bytes);

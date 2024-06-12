@@ -13,10 +13,24 @@
 #define SMBUS_BUF_MAX                   (259)
 #define I2C_DEFAULT_BITRATE             100
 
+// 0010_000xb
+#define SMBUS_ADDR_IPMI_BMC				(0x10)
 // 1100_001xb, 0xC2, SMBus Device Default Address
 #define SMBUS_ADDR_DEFAULT              (0x61)
 // 1101_010xb, 0xD4, Basic Management Command
-#define SMBUS_ADDR_NVME_MI_BMC          (0x6A)
+#define SMBUS_ADDR_NVME_MI_BMC          (0x6a)
+
+/**
+ * Address Type
+ */
+// Fixed Address, DTA (Default Target Address)
+#define SMBUS_ADDR_TYPE_FTA             (0)
+// Dynamic and Persistent Address, PTA (Persistent Target Address)
+#define SMBUS_ADDR_TYPE_PTA             (1)
+// Dynamic and Volatile Address, Non-PTA / Non-Random Number
+#define SMBUS_ADDR_TYPE_VTA             (2)
+// Random Number, Non-PTA / Random Number
+#define SMBUS_ADDR_TYPE_RNG             (3)
 
 enum i2c_data_direction {
 	I2C_WRITE = 0,

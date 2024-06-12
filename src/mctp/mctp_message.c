@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
-#include <stdbool.h>
 
+#include <stdbool.h>
 #include "types.h"
+
 #include "mctp.h"
 #include "mctp_transport.h"
-
 #include "crc32.h"
+#include "utility.h"
 
 static u32 m_inst_id;
 
@@ -20,7 +21,7 @@ u16 mctp_message_append_mic(void *msg, u16 msg_size)
 }
 
 int mctp_send_control_request_message(
-        u8 slave_addr, u8 dst_eid, enum mctp_ctrl_cmd_code cmd_code,
+        u8 slv_addr, u8 dst_eid, enum mctp_ctrl_cmd_code cmd_code,
         union mctp_ctrl_message *msg, size_t req_size, bool ic, bool retry)
 {
 	memset(msg, 0, sizeof(msg->ctrl_msg_head));
@@ -41,15 +42,17 @@ int mctp_send_control_request_message(
 	msg->ctrl_msg_head.cmd_code = cmd_code;
 
 	u16 msg_size = sizeof(msg->ctrl_msg_head) + req_size;
+	print_buf(msg, msg_size, "[%s]: msg (%d)", __FUNCTION__, msg_size);
 	if (ic)
 		msg_size = mctp_message_append_mic(msg, msg_size);
 
+	print_buf(msg, msg_size, "[%s]: add mic (%d)", __FUNCTION__, msg_size);
 	return mctp_transport_send_message(
-	               slave_addr, dst_eid, msg, msg_size,
+	               slv_addr, dst_eid, msg, msg_size,
 	               MCTP_MSG_TYPE_NVME_MM, 1);
 }
 
-int mctp_message_set_eid(u8 slave_addr, u8 dst_eid, enum set_eid_operation oper,
+int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
                          u8 eid, bool ic, bool retry)
 {
 	int status;
@@ -64,11 +67,18 @@ int mctp_message_set_eid(u8 slave_addr, u8 dst_eid, enum set_eid_operation oper,
 	req_data->oper = oper;
 	req_data->eid = eid;
 
+	print_buf(msg->msg_data, sizeof(*req_data), "[%s]: req data (%d)",
+	          __FUNCTION__, sizeof(*req_data));
 	status = mctp_send_control_request_message(
-	                 slave_addr, dst_eid, MCTP_CTRL_MSG_SET_EID, msg,
+	                 slv_addr, dst_eid, MCTP_CTRL_MSG_SET_EID, msg,
 	                 sizeof(*req_data), ic, retry);
 
 	free(msg);
 
 	return status;
+}
+
+int mctp_message_init(void)
+{
+	return MCTP_SUCCESS;
 }
