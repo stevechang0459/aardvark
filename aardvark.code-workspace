@@ -33,7 +33,8 @@
             "mctp_core.h": "c",
             "stdint.h": "c",
             "crc32.h": "c",
-            "smbus.h": "c"
+            "smbus.h": "c",
+            "crc8.h": "c"
         }
     }
 }

@@ -4,13 +4,13 @@
 u8 crc8(const void *buf, size_t len)
 {
 	const u8 *data = buf;
-	u8 crc = CRC8_INIT;
+	u8 crc = INIT_CRC8;
 
 	while (len--) {
 		crc ^= *data++;
 		for (int i = 8; i > 0; i--) {
 			if (crc & 0x80)
-				crc = (crc << 1) ^ CRC8_POLY;
+				crc = (crc << 1) ^ POLY_CRC8;
 			else
 				crc = (crc << 1);
 		}
@@ -30,12 +30,12 @@ u8 crc8_mr(u8 crc, const void *buf, size_t len)
 		for (i = 0x80; i != 0; i /= 2) {
 			if ((crc & 0x80) != 0) {
 				crc *= 2;
-				crc ^= CRC8_POLY;
+				crc ^= POLY_CRC8;
 			} else {
 				crc *= 2;
 			}
 			if ((*data & i) != 0) {
-				crc ^= CRC8_POLY;
+				crc ^= POLY_CRC8;
 			}
 		}
 		data++;
