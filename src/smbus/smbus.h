@@ -196,5 +196,8 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 slv_addr,
                            bool directed, bool pec_flag);
 int smbus_arp_cmd_assign_address(Aardvark handle, const union udid_ds *udid,
                                  u8 dev_tar_addr, bool pec_flag);
+int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
+                     int (*callback)(const void *, u32));
+void print_udid(const union udid_ds *udid);
 
 #endif // ~ SMBUS_H

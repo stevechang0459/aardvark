@@ -107,6 +107,11 @@ int parse_i2c_address(const char *addr_opt, int all_addrs)
 	long min_addr = 0x08;
 	long max_addr = 0x77;
 
+	if (!addr_opt) {
+		fprintf(stderr, "error: null addr_opt\n");
+		return -1;
+	}
+
 	address = strtol(addr_opt, &end, 0);
 	if (*end || !*addr_opt) {
 		fprintf(stderr, "error: invalid address '%s'\n", addr_opt);
@@ -181,18 +186,17 @@ int main(int argc, char *argv[])
 #endif
 
 	Aardvark handle = 0;
-	char *end, *bit_rate_opt = NULL;
+	char *end, *bit_rate_opt = NULL, *host_addr_opt = NULL;
 	int func_idx = FUNC_IDX_NULL;
 	int all_addr = 0, pec = 0,  power = 0, pull_up = 0, version = 0, manual = 0,
-	    directed = 0;
-	int opt, port, real_bit_rate, bit_rate, slv_addr, cmd_code,
-	    i2c_slave_mode;
+	    directed = 0, i2c_slave_mode = 0;
+	int opt, port, real_bit_rate, bit_rate, slv_addr, cmd_code;
 	const char *file_name;
 
 	real_bit_rate = bit_rate = I2C_DEFAULT_BITRATE;
 
 	/* handle (optional) flags first */
-	while ((opt = getopt(argc, argv, "ab:cdhkpsuv")) != -1) {
+	while ((opt = getopt(argc, argv, "ab:cdhkps:uv")) != -1) {
 		switch (opt) {
 		case 'a':
 			all_addr = 1;
@@ -213,6 +217,7 @@ int main(int argc, char *argv[])
 			power = 1;
 			break;
 		case 's':
+			host_addr_opt = optarg;
 			i2c_slave_mode = 1;
 			break;
 		case 'u':
@@ -303,8 +308,8 @@ int main(int argc, char *argv[])
 	if (power)
 		aa_target_power(handle, AA_TARGET_POWER_BOTH);
 
-	if (i2c_slave_mode)
-		aa_i2c_slave_enable(handle, SMBUS_ADDR_NVME_MI_BMC, 0, 0);
+	// if (i2c_slave_mode)
+	//      aa_i2c_slave_enable(handle, SMBUS_ADDR_NVME_MI_BMC, 0, 0);
 
 	switch (func_idx) {
 	case FUNC_IDX_DETECT: {
@@ -552,16 +557,26 @@ int main(int argc, char *argv[])
 	case FUNC_IDX_TEST_MCTP: {
 		int ret;
 		union udid_ds udid;
-		u8 owner_eid, tar_eid;
+		u8 host_addr, owner_eid, tar_eid;
 
 		if (check_argc(argc, optind + 4, optind + 4))
 			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
-		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
+		if (i2c_slave_mode) {
+			host_addr = parse_i2c_address(host_addr_opt, all_addr);
+			if (host_addr < 0)
+				goto exit;
+		} else {
+			host_addr = SMBUS_ADDR_IPMI_BMC;
+		}
+		aa_i2c_slave_enable(handle, host_addr, 0, 0);
+
+		int i = optind + 2;
+		slv_addr = parse_i2c_address(argv[i++], all_addr);
 		if (slv_addr < 0)
 			goto exit;
 
-		owner_eid = parse_eid(argv[optind + 3]);
+		owner_eid = parse_eid(argv[i++]);
 		if (owner_eid < 0)
 			goto exit;
 
@@ -606,6 +621,12 @@ int main(int argc, char *argv[])
 		              slv_addr, EID_NULL_DST, SET_EID, tar_eid, 1, 0);
 		if (ret) {
 			fprintf(stderr, "mctp_message_set_eid failed (%d)\n", ret);
+			goto exit;
+		}
+
+		ret = smbus_slave_poll(handle, 100, pec, NULL);
+		if (ret) {
+			fprintf(stderr, "smbus_slave_poll failed (%d)\n", ret);
 			goto exit;
 		}
 

@@ -1,13 +1,17 @@
+
+#include "aardvark.h"
+#include "smbus.h"
+#include "crc.h"
+#include "crc8.h"
+#include "utility.h"
+
+#include "types.h"
+#include <stdbool.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <stdbool.h>
-
-#include "types.h"
-#include "aardvark.h"
-#include "smbus.h"
-#include "crc.h"
 
 static u8 data[SMBUS_BUF_MAX];
 
@@ -518,4 +522,139 @@ finish:
 	dump_packet(data, num_bytes + pec_flag, "Assign Address");
 
 	return ret;
+}
+
+int smbus_slave_poll(
+        Aardvark handle, int timeout_ms, bool pec_flag,
+        int (*callback)(const void *, u32))
+{
+	int status;
+	int trans_num = 0;
+
+	fprintf(stderr, "info: polling SMBus data...\n");
+
+	// Polling data from SMBus
+	status = aa_async_poll(handle, timeout_ms);
+	if (status == AA_ASYNC_NO_DATA) {
+		fprintf(stderr, "info: no data available\n");
+		return -1;
+	}
+
+check_status:
+	// Loop until aa_async_poll times out
+	for (;;) {
+		/**
+		 * Read the I2C message.
+		 *
+		 * This function has an internal timeout (see datasheet), though since
+		 * we have already checked for data using aa_async_poll, the timeout
+		 * should never be exercised.
+		 */
+		if (status == AA_ASYNC_I2C_READ) {
+			u16 num_read;
+			u8 slv_addr;
+
+			status = aa_i2c_slave_read_ext(
+			                 handle, &slv_addr, SMBUS_BUF_MAX, &data[1],
+			                 &num_read);
+			if (status) {
+				fprintf(stderr, "[%s]: aa_i2c_slave_read_ext failed (%d)\n",
+				        __FUNCTION__, status);
+				return -1;
+			}
+
+			data[0] = slv_addr << 1 | I2C_WRITE;
+			num_read = num_read + 1;
+
+			// Dump the data to the screen
+			fprintf(stderr, "info: transaction #%02d (%d)\n",
+			        trans_num, num_read);
+			print_buf(data, num_read, "info: data read from SMBus:\n");
+
+			if (pec_flag) {
+				status = crc8(data, num_read);
+				if (status != 0) {
+					fprintf(stderr, "pec err (%d)\n", status);
+					return -2;
+				}
+			}
+
+			if (callback) {
+				status = callback(data, num_read + 1);
+				if (status) {
+					return -1;
+				}
+			}
+			++trans_num;
+
+		} else if (status == AA_ASYNC_I2C_WRITE) {
+			// Get number of bytes written to master
+			u16 num_written;
+			status = aa_i2c_slave_write_stats_ext(handle, &num_written);
+			if (status) {
+				fprintf(stderr,
+				        "[%s]: aa_i2c_slave_write_stats_ext failed (%d)\n",
+				        __FUNCTION__, status);
+				return -1;
+			}
+
+			// Print status information to the screen
+			fprintf(stderr, "info: transaction #%02d\n", trans_num);
+			fprintf(stderr,
+			        "info: number of bytes written to SMBus master: %04d\n",
+			        num_written);
+		} else if (status == AA_ASYNC_SPI) {
+			fprintf(stderr, "error: non-I2C asynchronous message is pending\n");
+			return -1;
+		}
+
+		// Use aa_async_poll to wait for the next transaction
+		status = aa_async_poll(handle, timeout_ms);
+		if (status == AA_ASYNC_NO_DATA) {
+			// If bus idle for more than 60 seconds, just break the loop.
+			fprintf(stderr, "info: no more data available from SMBus\n");
+			break;
+		} else {
+			goto check_status;
+		}
+	}
+
+	return 0;
+}
+
+static char *smbus_addr_type[] = {
+	"DTA",
+	"PTA",
+	"VTA",
+	"RNG"
+};
+
+void print_udid(const union udid_ds *udid)
+{
+	fprintf(stderr, "sizeof(udid_ds):%d\n", sizeof(union udid_ds));
+
+	fprintf(stderr, "udid->dev_cap.value: %x\n", udid->dev_cap.value);
+	fprintf(stderr, "PEC Supported: %d\n", udid->dev_cap.pec_sup);
+
+	fprintf(stderr, "Address Type: %s (%d)\n",
+	        smbus_addr_type[udid->dev_cap.addr_type],
+	        udid->dev_cap.addr_type);
+
+	fprintf(stderr, "udid->ver_rev.value: %d\n", udid->ver_rev.value);
+	fprintf(stderr, "Silicon Revision ID: %d\n", udid->ver_rev.si_rev_id);
+	fprintf(stderr, "UDID Version: %d\n", udid->ver_rev.udid_ver);
+
+	fprintf(stderr, "Vendor ID: %04x\n", udid->vendor_id);
+	fprintf(stderr, "Device ID: %04x\n", udid->device_id);
+
+	fprintf(stderr, "udid->interface.value: %x\n", udid->interface.value);
+	fprintf(stderr, "SMBus Version: %d\n", udid->interface.smbus_ver);
+	fprintf(stderr, "OEM: %d\n", udid->interface.oem);
+	fprintf(stderr, "ASF: %d\n", udid->interface.asf);
+	fprintf(stderr, "IPMI: %d\n", udid->interface.ipmi);
+	fprintf(stderr, "ZONE: %d\n", udid->interface.zone);
+
+	fprintf(stderr, "Subsystem Vendor ID: %04x\n", udid->subsys_vendor_id);
+	fprintf(stderr, "Subsystem Device ID: %04x\n", udid->subsys_device_id);
+	fprintf(stderr, "Vendor Specific ID: %08x\n", udid->vendor_spec_id);
 }
