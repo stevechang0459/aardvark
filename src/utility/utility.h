@@ -1,8 +1,6 @@
 #ifndef UTILITY_H
 #define UTILITY_H
 
-#include "smbus.h"
-
 #include "types.h"
 #include <stdbool.h>
 
@@ -14,7 +12,6 @@ void aligned_free(void *aligned_ptr);
 size_t strlen(const char *s);
 void print_buf(const void *buf, size_t size, const char *title, ...);
 void reverse(void *in, u32 len);
-void print_udid(const union udid_ds *udid);
 
 #define DBGPRINT(filter, ...) \
     printf(__VA_ARGS__)
