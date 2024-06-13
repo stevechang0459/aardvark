@@ -26,13 +26,14 @@
 /*                                                               */
 /*****************************************************************/
 
+#if (CRC_LE_BITS == 4)
 static const u32 crc_table_le4[16] = {
 	0x00000000, 0x105ec76f, 0x20bd8ede, 0x30e349b1,
 	0x417b1dbc, 0x5125dad3, 0x61c69362, 0x7198540d,
 	0x82f63b78, 0x92a8fc17, 0xa24bb5a6, 0xb21572c9,
 	0xc38d26c4, 0xd3d3e1ab, 0xe330a81a, 0xf36e6f75
 };
-
+#elif (CRC_LE_BITS == 8)
 static const u32 crc_table_le8[256] = {
 	0x00000000, 0xf26b8303, 0xe13b70f7, 0x1350f3f4,
 	0xc79a971f, 0x35f1141c, 0x26a1e7e8, 0xd4ca64eb,
@@ -99,47 +100,11 @@ static const u32 crc_table_le8[256] = {
 	0x79b737ba, 0x8bdcb4b9, 0x988c474d, 0x6ae7c44e,
 	0xbe2da0a5, 0x4c4623a6, 0x5f16d052, 0xad7d5351
 };
+#endif
 
 /*****************************************************************/
 /*                   End of CRC Lookup Table                     */
 /*****************************************************************/
-
-u32 crc32(u32 crc, const void *buf, size_t len)
-{
-	const u8 *data = buf;
-
-	while (len--) {
-		crc = crc_table_le8[(crc ^ *data++) & 0xff] ^ (crc >> 8);
-	}
-
-	return crc;
-}
-
-u32 crc32_tableless(u32 crc, const void *buf, size_t len, u32 poly)
-{
-	const u8 *data = buf;
-
-	while (len--) {
-		crc ^= *data++;
-		for (int i = 0; i < 8; i++)
-			crc = crc & 1 ? (crc >> 1) ^ poly : crc >> 1;
-	}
-
-	return crc;
-}
-
-u32 crc32_halfbyte(u32 crc, const void *buf, size_t len)
-{
-	const u8 *data = buf;
-
-	while (len--) {
-		crc = crc_table_le4[(crc ^  *data) & 0xf] ^ (crc >> 4);
-		crc = crc_table_le4[(crc ^ (*data >> 4)) & 0xf] ^ (crc >> 4);
-		data++;
-	}
-
-	return crc;
-}
 
 u32 crc32_le_generic(
         u32 crc, const void *buf, size_t len, u32 poly)
@@ -166,22 +131,8 @@ u32 crc32_le_generic(
 		crc = (crc >> 8) ^ crc_table_le8[crc & 0xff];
 	}
 #else
-#error "Wrong CRC_LE_BITS setting"
+#error wrong CRC_LE_BITS setting
 #endif
 
 	return crc;
 }
-
-// void half_byte_table_generator(void)
-// {
-//      printf("[%s]\n", __FUNCTION__);
-
-//      for (unsigned int i = 0; i < 16; i++) {
-//              unsigned int crc = i;
-//              for (unsigned int j = 0; j < 4; j++)
-//                      crc = (crc >> 1) ^ (-(int)(crc & 1) & REVERSED_POLY);
-
-//              lut[i] = crc;
-//              printf("0x%08X\n", crc);
-//      }
-// }

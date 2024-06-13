@@ -19,14 +19,14 @@ u8 crc8(const void *buf, size_t len)
 	return crc;
 }
 
-u8 crc8_mr(u8 crc, const void *buf, size_t count)
+u8 crc8_mr(u8 crc, const void *buf, size_t len)
 {
 	const u8 *data = buf;
 	u8 i = 0;
-	if (count <= 0)
+	if (len <= 0)
 		return crc;
 
-	while (count--) {
+	while (len--) {
 		for (i = 0x80; i != 0; i /= 2) {
 			if ((crc & 0x80) != 0) {
 				crc *= 2;
@@ -57,12 +57,12 @@ static u8 _crc8_linux(u16 data)
 	return (u8)(data >> 8);
 }
 
-u8 crc8_linux(u8 crc, const void *buf, size_t count)
+u8 crc8_linux(u8 crc, const void *buf, size_t len)
 {
 	const u8 *data = buf;
 	int i;
 
-	for (i = 0; i < count; i++)
+	for (i = 0; i < len; i++)
 		crc = _crc8_linux((crc ^ data[i]) << 8);
 	return crc;
 }
