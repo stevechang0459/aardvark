@@ -68,10 +68,6 @@ typedef int ret_code;
 //      true  = 1
 // };
 
-enum {
-	FALSE = 0,
-	TRUE = 1
-};
 #if 0
 #define _offsetof(type, member)  ((size_t)&((type *)0)->member)
 
@@ -136,9 +132,26 @@ enum {
 #define MB (KB * KB)
 #define GB (MB * KB)
 
+#define LSHIFT(n)                       ((u32)1 << (n))
+
 // #define likely(x)                       __builtin_expect((x), 1)
 // #define unlikely(x)                     __builtin_expect((x), 0)
 #define likely(x)                       __builtin_expect(!!(x), 1)
 #define unlikely(x)                     __builtin_expect(!!(x), 0)
+
+enum {
+	FALSE = 0,
+	TRUE = 1
+};
+
+enum trace_type {
+	ERROR = 0,
+	WARN = 1,
+	DEBUG,
+	INFO,
+	INIT,
+
+	TRACE_TYPE_MAX
+};
 
 #endif  // TYPES_H

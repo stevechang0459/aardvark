@@ -44,6 +44,14 @@ const struct function_list func_list[] = {
 	{NULL}
 };
 
+const char *main_trace_header[TRACE_TYPE_MAX] =  {
+	"aardvark: error: ",
+	"aardvark: warning: ",
+	"aardvark: debug: ",
+	"aardvark: info: ",
+	"aardvark: init: ",
+};
+
 static int m_keep_power = 0;
 static u8 block[BLOCK_SIZE_MAX];
 
@@ -53,15 +61,14 @@ int parse_eid(const char *eid_opt)
 	char *end;
 	eid = strtol(eid_opt, &end, 0);
 	if (*end || eid < 0) {
-		fprintf(stderr, "error: invalid eid '%s'\n", eid_opt);
+		main_trace(ERROR, "invalid eid '%s'\n", eid_opt);
 		return -1;
 	}
 
 	if ((eid != 0) && (eid < 0x08 || eid > 0xfe)) {
-		fprintf(stderr, "error: eid '%s' out of range "
-		        "(valid eid is: 0x00, 0x08-0x7e)\n",
-		        eid_opt);
-		return -2;
+		main_trace(ERROR, "eid '%s' out of range "
+		           "(valid eid is: 0x00, 0x08-0x7e)\n", eid_opt);
+		return -1;
 	}
 
 	return eid;
@@ -73,7 +80,7 @@ int parse_cmd_code(const char *cmd_code_opt)
 	char *end;
 	cmd_code = strtol(cmd_code_opt, &end, 0);
 	if (*end || cmd_code < 0) {
-		fprintf(stderr, "error: invalid command code '%s'\n", cmd_code_opt);
+		main_trace(ERROR, "invalid command code '%s'\n", cmd_code_opt);
 		return -1;
 	}
 
@@ -86,7 +93,7 @@ int parse_bit_rate(const char *bit_rate_opt)
 		char *end;
 		int bit_rate = strtol(bit_rate_opt, &end, 0);
 		if (*end || bit_rate <= 0) {
-			fprintf(stderr, "error: invalid bit rate '%s'\n", bit_rate_opt);
+			main_trace(ERROR, "invalid bit rate '%s'\n", bit_rate_opt);
 			return -1;
 		}
 
@@ -108,13 +115,13 @@ int parse_i2c_address(const char *addr_opt, int all_addrs)
 	long max_addr = 0x77;
 
 	if (!addr_opt) {
-		fprintf(stderr, "error: null addr_opt\n");
+		main_trace(ERROR, "null addr_opt\n");
 		return -1;
 	}
 
 	address = strtol(addr_opt, &end, 0);
 	if (*end || !*addr_opt) {
-		fprintf(stderr, "error: invalid address '%s'\n", addr_opt);
+		main_trace(ERROR, "invalid address '%s'\n", addr_opt);
 		return -1;
 	}
 
@@ -124,10 +131,10 @@ int parse_i2c_address(const char *addr_opt, int all_addrs)
 	}
 
 	if (address < min_addr || address > max_addr) {
-		fprintf(stderr, "error: address '%s' out of range "
-		        "(valid address is: 0x%02lx-0x%02lx)\n",
-		        addr_opt, min_addr, max_addr);
-		return -2;
+		main_trace(ERROR, "address '%s' out of range "
+		           "(valid address is: 0x%02lx-0x%02lx)\n",
+		           addr_opt, min_addr, max_addr);
+		return -1;
 	}
 
 	return address;
@@ -136,10 +143,10 @@ int parse_i2c_address(const char *addr_opt, int all_addrs)
 static int check_argc(int argc, int min, int max)
 {
 	if (argc < min) {
-		fprintf(stderr, "error: too few arguments\n");
+		main_trace(ERROR, "too few arguments\n");
 		return argc - min;
 	} else if (argc > max) {
-		fprintf(stderr, "error: too many arguments\n");
+		main_trace(ERROR, "too many arguments\n");
 		return argc - max;
 	}
 
@@ -164,6 +171,8 @@ static void main_exit(int status_code, int handle, int func_idx,
 		va_end(argp);
 		fputc('\n', stderr);
 	}
+
+	mctp_deinit();
 
 	// Close the device
 	if (handle)
@@ -273,9 +282,8 @@ int main(int argc, char *argv[])
 	// Open the device
 	handle = aa_open(port);
 	if (handle <= 0) {
-		fprintf(stderr,
-		        "error: unable to open Aardvark device on port %d\n", port);
-		fprintf(stderr, "Error code = %d\n", handle);
+		main_trace(ERROR, "unable to open Aardvark device on port %d\n", port);
+		main_trace(ERROR, "Error code = %d\n", handle);
 		main_exit(EXIT_FAILURE, 0, -1, NULL);
 	}
 
@@ -284,13 +292,12 @@ int main(int argc, char *argv[])
 
 	bit_rate = parse_bit_rate(bit_rate_opt);
 	if (bit_rate < 0)
-		goto exit;
+		goto out;
 
 	// Setup the bit rate
 	real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
 	if (real_bit_rate != bit_rate)
-		fprintf(stderr,
-		        "warning: the bitrate is different from user input\n");
+		main_trace(WARN, "the bitrate is different from user input\n");
 
 	/**
 	 * Enable the I2C bus pullup resistors (2.2k resistors). This command is
@@ -315,7 +322,7 @@ int main(int argc, char *argv[])
 	case FUNC_IDX_DETECT: {
 		int ret = aa_detect();
 		if (ret)
-			fprintf(stderr, "error: %s\n", aa_status_string(ret));
+			main_trace(ERROR, "%s\n", aa_status_string(ret));
 
 		break;
 	}
@@ -325,7 +332,7 @@ int main(int argc, char *argv[])
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto exit;
+			goto out;
 
 		uint32_t data = strtoul(argv[optind + 3], &end, 0);
 		if (*end || errno) {
@@ -355,11 +362,11 @@ int main(int argc, char *argv[])
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto exit;
+			goto out;
 
 		cmd_code = parse_cmd_code(argv[optind + 3]);
 		if (cmd_code < 0)
-			goto exit;
+			goto out;
 
 		uint64_t max = 0;
 		switch (func_idx) {
@@ -416,11 +423,11 @@ int main(int argc, char *argv[])
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto exit;
+			goto out;
 
 		cmd_code = parse_cmd_code(argv[optind + 3]);
 		if (cmd_code < 0)
-			goto exit;
+			goto out;
 
 		int byte_cnt, value;
 		for (byte_cnt = 0; byte_cnt < argc - (optind + 4); byte_cnt++) {
@@ -463,7 +470,7 @@ int main(int argc, char *argv[])
 
 			slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 			if (slv_addr < 0)
-				goto exit;
+				goto out;
 		} else {
 			if (check_argc(argc, optind + 2, optind + 2))
 				main_exit(EXIT_FAILURE, handle, func_idx, NULL);
@@ -487,7 +494,7 @@ int main(int argc, char *argv[])
 
 			slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 			if (slv_addr < 0)
-				goto exit;
+				goto out;
 		} else {
 			if (check_argc(argc, optind + 2, optind + 2))
 				main_exit(EXIT_FAILURE, handle, func_idx, NULL);
@@ -508,28 +515,30 @@ int main(int argc, char *argv[])
 		int byte_cnt, value;
 		for (byte_cnt = 0; byte_cnt < argc - (optind + 3); byte_cnt++) {
 			value = strtol(argv[byte_cnt + optind + 2], &end, 0);
-			fprintf(stderr, "%02d, %02d, %02x\n", argc, byte_cnt + optind + 2, value);
-			if (*end || value < 0)
-				main_exit(EXIT_FAILURE, handle, -1,
-				          "error: invalid data value '%s'\n",
-				          argv[byte_cnt + optind + 2]);
+			if (*end || value < 0) {
+				main_trace(ERROR, "invalid data value '%s'\n",
+				           argv[byte_cnt + optind + 2]);
+				goto out;
+			}
 
-			if (value > 0xff)
-				main_exit(EXIT_FAILURE, handle, -1,
-				          "error: data value '%s' out of range\n",
-				          argv[byte_cnt + optind + 2]);
+			if (value > 0xff) {
+				main_trace(ERROR, "data value '%s' out of range\n",
+				           argv[byte_cnt + optind + 2]);
+				goto out;
+			}
 
 			udid.data[byte_cnt] = value;
 		}
 
 		slv_addr = parse_i2c_address(argv[byte_cnt + optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto exit;
-		fprintf(stderr, "%02d, %02d, %02x\n", argc, byte_cnt + optind + 2, slv_addr);
+			goto out;
 
 		int ret = smbus_arp_cmd_assign_address(handle, &udid, slv_addr, pec);
-		if (ret)
-			main_exit(EXIT_FAILURE, handle, -1, NULL);
+		if (ret) {
+			main_trace(ERROR, "smbus_arp_cmd_assign_address (%d)\n", ret);
+			goto out;
+		}
 
 		break;
 	}
@@ -539,18 +548,19 @@ int main(int argc, char *argv[])
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto exit;
+			goto out;
 
 		cmd_code = parse_cmd_code(argv[optind + 3]);
 		if (cmd_code < 0)
-			goto exit;
+			goto out;
 
 		file_name = argv[optind + 4];
 
-		int ret = smbus_write_file(
-		                  handle, slv_addr, cmd_code, file_name, pec);
-		if (ret)
-			main_exit(EXIT_FAILURE, handle, -1, NULL);
+		int ret = smbus_write_file(handle, slv_addr, cmd_code, file_name, pec);
+		if (ret) {
+			main_trace(ERROR, "smbus_write_file (%d)\n", ret);
+			goto out;
+		}
 
 		break;
 	}
@@ -565,31 +575,31 @@ int main(int argc, char *argv[])
 		if (i2c_slave_mode) {
 			host_addr = parse_i2c_address(host_addr_opt, all_addr);
 			if (host_addr < 0)
-				goto exit;
-		} else {
+				goto out;
+		} else
 			host_addr = SMBUS_ADDR_IPMI_BMC;
-		}
+
 		aa_i2c_slave_enable(handle, host_addr, 0, 0);
 
 		int i = optind + 2;
 		slv_addr = parse_i2c_address(argv[i++], all_addr);
 		if (slv_addr < 0)
-			goto exit;
+			goto out;
 
 		owner_eid = parse_eid(argv[i++]);
 		if (owner_eid < 0)
-			goto exit;
+			goto out;
 
 		ret = smbus_arp_cmd_prepare_to_arp(handle, pec);
 		if (ret) {
-			fprintf(stderr, "smbus_arp_cmd_prepare_to_arp failed (%d)\n", ret);
-			goto exit;
+			main_trace(ERROR, "smbus_arp_cmd_prepare_to_arp (%d)\n", ret);
+			goto out;
 		}
 
 		ret = smbus_arp_cmd_get_udid(handle, &udid, slv_addr, 0, pec);
 		if (ret) {
-			fprintf(stderr, "smbus_arp_cmd_get_udid failed (%d)\n", ret);
-			goto exit;
+			main_trace(ERROR, "smbus_arp_cmd_get_udid (%d)\n", ret);
+			goto out;
 		}
 
 		reverse(&udid, sizeof(udid));
@@ -598,36 +608,40 @@ int main(int argc, char *argv[])
 
 		ret = smbus_arp_cmd_assign_address(handle, &udid, slv_addr, pec);
 		if (ret) {
-			fprintf(stderr, "smbus_arp_cmd_assign_address failed (%d)\n", ret);
-			goto exit;
+			main_trace(ERROR, "smbus_arp_cmd_assign_address (%d)\n", ret);
+			goto out;
 		}
 
 		ret = smbus_arp_cmd_get_udid(handle, &udid, slv_addr, 1, pec);
 		if (ret) {
-			fprintf(stderr, "smbus_arp_cmd_get_udid failed (%d)\n", ret);
-			goto exit;
+			main_trace(ERROR, "smbus_arp_cmd_get_udid (%d)\n", ret);
+			goto out;
 		}
+
 		reverse(&udid, sizeof(udid));
 		print_udid(&udid);
 
 		owner_eid = (owner_eid == 0 ? 8 : owner_eid);
 		tar_eid = (owner_eid == 0xfe ? owner_eid - 1 : owner_eid + 1);
 
-		mctp_init(
-		        handle, owner_eid, tar_eid, SMBUS_ADDR_IPMI_BMC, MCTP_BASELINE_TRAN_UNIT_SIZE,
-		        pec);
-
-		ret = mctp_message_set_eid(
-		              slv_addr, EID_NULL_DST, SET_EID, tar_eid, 1, 0);
+		ret = mctp_init(handle, owner_eid, tar_eid, SMBUS_ADDR_IPMI_BMC,
+		                MCTP_BASELINE_TRAN_UNIT_SIZE, pec);
 		if (ret) {
-			fprintf(stderr, "mctp_message_set_eid failed (%d)\n", ret);
-			goto exit;
+			main_trace(ERROR, "mctp_init (%d)\n", ret);
+			goto out;
 		}
 
-		ret = smbus_slave_poll(handle, 100, pec, NULL);
+		ret = mctp_message_set_eid(slv_addr, EID_NULL_DST, SET_EID,
+		                           tar_eid, 1, 0);
 		if (ret) {
-			fprintf(stderr, "smbus_slave_poll failed (%d)\n", ret);
-			goto exit;
+			main_trace(ERROR, "mctp_message_set_eid (%d)\n", ret);
+			goto out;
+		}
+
+		ret = smbus_slave_poll(handle, 100, pec, mctp_receive_packet_handle);
+		if (ret) {
+			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
+			goto out;
 		}
 
 		break;
@@ -654,7 +668,7 @@ int main(int argc, char *argv[])
 
 		ret = aa_i2c_file(port, slv_addr, file_name);
 		if (ret)
-			fprintf(stderr, "aa_i2c_file failed (%d)\n", ret);
+			main_trace(ERROR, "aa_i2c_file (%d)\n", ret);
 
 		break;
 	}
@@ -681,7 +695,7 @@ int main(int argc, char *argv[])
 
 		ret = aa_i2c_slave_poll(port, dev_addr, timeout_ms);
 		if (ret)
-			fprintf(stderr, "aa_i2c_slave_poll failed (%d)\n", ret);
+			main_trace(ERROR, "aa_i2c_slave_poll (%d)\n", ret);
 
 		break;
 	}
@@ -697,7 +711,7 @@ int main(int argc, char *argv[])
 
 		ret = aa_smbus_device_poll(port, dev_addr, timeout_ms);
 		if (ret)
-			fprintf(stderr, "aa_smb_slave_poll failed (%d)\n", ret);
+			main_trace(ERROR, "aa_smbus_device_poll (%d)\n", ret);
 
 		break;
 	}
@@ -716,7 +730,7 @@ int main(int argc, char *argv[])
 		ret = test_smbus_controller_target_poll(
 		              port, slv_addr, dev_addr, timeout_ms);
 		if (ret)
-			fprintf(stderr, "aa_smb_slave_poll failed (%d)\n", ret);
+			main_trace(ERROR, "test_smbus_controller_target_poll (%d)\n", ret);
 
 		break;
 	}
@@ -727,6 +741,6 @@ int main(int argc, char *argv[])
 
 	main_exit(EXIT_SUCCESS, handle, -1, NULL);
 
-exit:
+out:
 	main_exit(EXIT_FAILURE, handle, -1, NULL);
 }

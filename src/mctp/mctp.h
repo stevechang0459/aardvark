@@ -2,6 +2,9 @@
 #define MCTP_H
 
 #include "types.h"
+#include <stdbool.h>
+
+#include <stdio.h>
 
 //
 #define MCTP_MSG_SIZE_MAX               (4224)
@@ -26,6 +29,30 @@
  * Size. The format of an MCTP Packet Payload is shown in Figure 22.
  */
 #define MCTP_BASELINE_TRAN_UNIT_SIZE    (64)
+
+#define MCTP_TRACE_FILTER (0 \
+        | LSHIFT(ERROR) \
+        | LSHIFT(WARN) \
+        | LSHIFT(DEBUG) \
+        | LSHIFT(INFO) \
+        | LSHIFT(INIT) \
+        )
+
+#if 1
+extern const char *mctp_trace_header[];
+
+#define mctp_trace(type, ...) \
+do { \
+if (LSHIFT(type) & MCTP_TRACE_FILTER) { \
+        fprintf(stderr, "%s", mctp_trace_header[type]); \
+        fprintf(stderr, __VA_ARGS__);} \
+} while (0)
+#else
+#define mctp_trace(type, ...) { \
+if (LSHIFT(type) & MCTP_TRACE_FILTER) \
+        fprintf(stderr, "[%s]: ", #type); \
+        fprintf(stderr, __VA_ARGS__);}
+#endif
 
 enum special_eid {
 	EID_NULL_DST = 0,

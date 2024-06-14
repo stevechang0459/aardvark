@@ -44,14 +44,14 @@ u8 crc8_mr(u8 crc, const void *buf, size_t len)
 	return crc;
 }
 
-#define POLY    (0x1070U << 3)
+#define POLY_CRC32    (0x1070U << 3)
 static u8 _crc8_linux(u16 data)
 {
 	int i;
 
 	for (i = 0; i < 8; i++) {
 		if (data & 0x8000)
-			data = data ^ POLY;
+			data = data ^ POLY_CRC32;
 		data = data << 1;
 	}
 	return (u8)(data >> 8);
