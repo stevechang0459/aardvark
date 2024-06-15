@@ -90,18 +90,34 @@ int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
 	return ret;
 }
 
+static const char *eid_assign_sts[EID_ASSIGN_STATUS_MAX] = {
+	"accepted",
+	"rejected",
+	"reserved",
+	"reserved"
+};
+
+static const char *eid_alloc_sts[EID_ALLOC_STATUS_MAX] = {
+	"not use an EID pool",
+	"requires EID pool",
+	"already received an allocation",
+	"reserved"
+};
+
 u8 mctp_ctrl_resp_set_eid(const union mctp_ctrl_message *msg)
 {
 	u8 cmpl_code = msg->ctrl_msg_head.cmpl_code;
 	const union mctp_resp_data_set_eid *resp_data = (void *)msg->msg_data;
 
-	mctp_trace(INFO, "cmpl_code = %x\n", cmpl_code);
-	mctp_trace(INFO, "eid_alloc_sts = %x\n", resp_data->eid_alloc_sts);
-	mctp_trace(INFO, "eid_assign_sts = %x\n", resp_data->eid_assign_sts);
-	mctp_trace(INFO, "eid_setting = %x\n", resp_data->eid_setting);
-	mctp_trace(INFO, "eid_poll_size = %x\n", resp_data->eid_poll_size);
+	mctp_trace(INFO, "Completion code = %x\n", cmpl_code);
+	mctp_trace(INFO, "Endpoint ID Allocation Status = %s\n",
+	           eid_alloc_sts[resp_data->eid_alloc_sts]);
+	mctp_trace(INFO, "EID Assignment Status = %s\n",
+	           eid_assign_sts[resp_data->eid_assign_sts]);
+	mctp_trace(INFO, "EID Setting = %x\n", resp_data->eid_setting);
+	mctp_trace(INFO, "EID Pool Size = %x\n", resp_data->eid_poll_size);
 
-	return  cmpl_code;
+	return cmpl_code;
 }
 
 static int mctp_control_request_message_handle(

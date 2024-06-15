@@ -61,6 +61,37 @@ enum mctp_ctrl_cmpl_code {
 	MCTP_CMPL_MSG_TYPE_NOT_SUP = 0x80,
 };
 
+// EID assignment status
+enum eid_assign_status {
+	// EID assignment accepted
+	EID_ASSIGN_ACCEPT = 0,
+	// EID assignment rejected
+	EID_ASSIGN_REJECT = 1,
+	// Reserved
+	EID_ALLOC_STATUS_RSVD1,
+	// Reserved
+	EID_ALLOC_STATUS_RSVD2,
+
+	EID_ASSIGN_STATUS_MAX
+};
+
+// Endpoint ID allocation status
+enum eid_alloc_status {
+	// Device does not use an EID pool.
+	EID_ALLOC_SIMPLE,
+	// Endpoint requires EID pool allocation.
+	EID_ALLOC_REQ_EID_POOL,
+	/**
+	 * Endpoint uses an EID pool and has already received an allocation for that
+	 * pool.
+	 */
+	EID_ALLOC_EID_POOL_EXIST,
+	// Reserved
+	EID_ALLOC_STATUS_RSVD,
+
+	EID_ALLOC_STATUS_MAX
+};
+
 union mctp_resp_data_set_eid {
 	struct {
 		// Byte[0]
