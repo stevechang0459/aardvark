@@ -644,6 +644,12 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
+		ret = smbus_slave_poll(handle, 100, pec, NULL);
+		if (ret) {
+			fprintf(stderr, "smbus_slave_poll failed (%d)\n", ret);
+			goto exit;
+		}
+
 		break;
 	}
 #if 0
