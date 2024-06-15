@@ -34,7 +34,8 @@
             "stdint.h": "c",
             "crc32.h": "c",
             "smbus.h": "c",
-            "crc8.h": "c"
+            "crc8.h": "c",
+            "mctp_message.h": "c"
         }
     }
 }

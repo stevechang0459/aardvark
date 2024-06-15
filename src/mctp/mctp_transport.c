@@ -152,6 +152,11 @@ void mctp_transport_clear_state(u32 val)
 	m_mctp_tran_mgr.flag.value &= ~val;
 }
 
+bool mctp_transport_req_sent(void)
+{
+	return m_mctp_tran_mgr.req_sent;
+}
+
 bool mctp_transport_ic_set(const union mctp_message *msg)
 {
 	return msg->msg_head.ic;
@@ -415,7 +420,6 @@ int mctp_transport_init(u8 owner_eid, u8 tar_eid, u16 nego_size)
 
 int mctp_transport_deinit(void)
 {
-	// mctp_trace(INFO, "%s\n", __FUNCTION__);
 	mctp_trace(INIT, "%s\n", __FUNCTION__);
 	free(m_mctp_addr_map);
 

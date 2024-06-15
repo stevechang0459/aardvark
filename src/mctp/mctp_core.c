@@ -19,12 +19,10 @@ const char *mctp_trace_header[TRACE_TYPE_MAX] =  {
 	"mctp: init: ",
 };
 
-static union mctp_message *m_mctp_msg;
-
 int mctp_receive_packet_handle(const void *buf, u32 len)
 {
 	int ret;
-	union mctp_message *msg = m_mctp_msg;
+	union mctp_message *msg;
 	const union mctp_smbus_packet *pkt = buf;
 
 	ret = mctp_smbus_check_packet(&pkt->medi_head);
@@ -38,6 +36,11 @@ int mctp_receive_packet_handle(const void *buf, u32 len)
 		mctp_trace(ERROR, "mctp_transport_check_packet (%d)\n", ret);
 		return ret;
 	}
+
+	if (mctp_transport_req_sent())
+		msg = g_mctp_resp_msg;
+	else
+		msg = g_mctp_req_msg;
 
 	ret = mctp_transport_assemble_message(msg, pkt);
 	if (ret) {
@@ -79,6 +82,7 @@ int mctp_init(int handle, u8 owner_eid, u8 tar_eid, u8 src_slv_addr,
               u16 nego_size, bool pec_flag)
 {
 	int ret;
+	mctp_trace(INIT, "%s\n", __FUNCTION__);
 
 	ret = mctp_message_init();
 	if (ret) {
@@ -98,13 +102,13 @@ int mctp_init(int handle, u8 owner_eid, u8 tar_eid, u8 src_slv_addr,
 		return ret;
 	}
 
-	m_mctp_msg = mctp_message_alloc();
-
 	return MCTP_SUCCESS;
 }
 
 int mctp_deinit(void)
 {
+	mctp_trace(INIT, "%s\n", __FUNCTION__);
+
 	mctp_message_deinit();
 	mctp_transport_deinit();
 	mctp_smbus_deinit();

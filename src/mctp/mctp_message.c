@@ -1,4 +1,5 @@
 #include "mctp.h"
+#include "mctp_message.h"
 #include "mctp_transport.h"
 #include "crc32.h"
 #include "utility.h"
@@ -11,8 +12,9 @@
 #include <string.h>
 #include <stddef.h>
 
-static u32 m_inst_id;
-static union mctp_ctrl_message *m_mctp_msg = NULL;
+union mctp_message *g_mctp_req_msg;
+union mctp_message *g_mctp_resp_msg;
+struct mctp_message_manager m_mctp_msg_mgr;
 
 u16 mctp_message_append_mic(void *msg, u16 msg_size)
 {
@@ -26,6 +28,7 @@ int mctp_send_control_request_message(
         union mctp_ctrl_message *msg, size_t req_size, bool ic, bool retry)
 {
 	memset(msg, 0, sizeof(msg->ctrl_msg_head));
+	u16 msg_size = sizeof(msg->ctrl_msg_head) + req_size;
 
 	msg->ctrl_msg_head.mt = MCTP_MSG_TYPE_CTRL;
 	msg->ctrl_msg_head.ic = ic;
@@ -37,12 +40,13 @@ int mctp_send_control_request_message(
 	msg->ctrl_msg_head.d_bit = 0;
 
 	if (!retry)
-		++m_inst_id;
+		++m_mctp_msg_mgr.inst_id;
 
-	msg->ctrl_msg_head.inst_id = m_inst_id;
+	msg->ctrl_msg_head.inst_id = m_mctp_msg_mgr.inst_id;
 	msg->ctrl_msg_head.cmd_code = cmd_code;
 
-	u16 msg_size = sizeof(msg->ctrl_msg_head) + req_size;
+	m_mctp_msg_mgr.ctrl_msg_head.value = msg->ctrl_msg_head.value;
+
 	print_buf(msg, msg_size, "[%s]: msg (%d)", __FUNCTION__, msg_size);
 	if (ic)
 		msg_size = mctp_message_append_mic(msg, msg_size);
@@ -86,43 +90,105 @@ int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
 	return ret;
 }
 
-int mctp_message_handle(const union mctp_message *msg, word size)
+u8 mctp_ctrl_resp_set_eid(const union mctp_ctrl_message *msg)
 {
-	int status = MCTP_SUCCESS;
-	u8 mt = msg->msg_head.mt;
+	u8 cmpl_code = msg->ctrl_msg_head.cmpl_code;
+	const union mctp_resp_data_set_eid *resp_data = (void *)msg->msg_data;
 
-	switch (mt) {
-	default:
+	mctp_trace(INFO, "cmpl_code = %x\n", cmpl_code);
+	mctp_trace(INFO, "eid_alloc_sts = %x\n", resp_data->eid_alloc_sts);
+	mctp_trace(INFO, "eid_assign_sts = %x\n", resp_data->eid_assign_sts);
+	mctp_trace(INFO, "eid_setting = %x\n", resp_data->eid_setting);
+	mctp_trace(INFO, "eid_poll_size = %x\n", resp_data->eid_poll_size);
+
+	return  cmpl_code;
+}
+
+static int mctp_control_request_message_handle(
+        const union mctp_ctrl_message *msg, u16 size)
+{
+	return MCTP_SUCCESS;
+}
+
+static int mctp_control_response_message_handle(
+        const union mctp_ctrl_message *msg, u16 size)
+{
+	u8 cmpl_code = MCTP_CMPL_SUCCESS;
+	u8 cmd_code = msg->ctrl_msg_head.cmd_code;
+	// const void *resp_data = msg->msg_data;
+
+	mctp_trace(INFO, "mctp response = %d\n", cmd_code);
+
+	switch (cmd_code) {
+	case MCTP_CTRL_MSG_SET_EID:
+		cmpl_code = mctp_ctrl_resp_set_eid(msg);
 		break;
 	}
 
-	return status;
+	return cmpl_code;
 }
 
-void *mctp_message_alloc(void)
+static int mctp_control_message_handle(
+        const union mctp_ctrl_message *msg, u16 size)
 {
-	if (!m_mctp_msg)
-		m_mctp_msg = malloc(MCTP_MSG_SIZE_MAX);
+	u8 cmpl_code;
 
-	return m_mctp_msg;
+	if (msg->ctrl_msg_head.rq_bit) {
+		cmpl_code = mctp_control_request_message_handle(msg, size);
+		return cmpl_code == MCTP_CMPL_SUCCESS
+		       ? MCTP_SUCCESS
+		       : MCTP_MSG_ERR_CTRL_REQ_MSG;
+	} else {
+		cmpl_code = mctp_control_response_message_handle(msg, size);
+		return cmpl_code == MCTP_CMPL_SUCCESS
+		       ? MCTP_SUCCESS
+		       : MCTP_MSG_ERR_CTRL_RESP_MSG;
+	}
 }
 
-void mctp_message_free(void)
+static int mctp_nvme_mm_handle(
+        const union mctp_message *msg, u16 size)
 {
-	if (m_mctp_msg)
-		free(m_mctp_msg);
+	return MCTP_SUCCESS;
+}
 
-	m_mctp_msg = NULL;
+int mctp_message_handle(const union mctp_message *msg, u16 size)
+{
+	int ret = MCTP_SUCCESS;
+	u8 mt = msg->msg_head.mt;
+
+	switch (mt) {
+	case MCTP_MSG_TYPE_CTRL:
+		ret = mctp_control_message_handle((void *)msg, size);
+		if (ret)
+			mctp_trace(ERROR, "mctp_control_message_handle (%d)\n", ret);
+		break;
+
+	case MCTP_MSG_TYPE_NVME_MM:
+		ret = mctp_nvme_mm_handle((void *)msg, size);
+		if (ret)
+			mctp_trace(ERROR, "mctp_nvme_mm_handle (%d)\n", ret);
+		break;
+	}
+
+	return ret;
 }
 
 int mctp_message_init(void)
 {
-	mctp_message_alloc();
+	mctp_trace(INIT, "%s\n", __FUNCTION__);
+	memset(&m_mctp_msg_mgr, 0, sizeof(m_mctp_msg_mgr));
+	g_mctp_req_msg = malloc(MCTP_MSG_SIZE_MAX);
+	g_mctp_resp_msg = malloc(MCTP_MSG_SIZE_MAX);
+
 	return MCTP_SUCCESS;
 }
 
 int mctp_message_deinit(void)
 {
-	mctp_message_free();
+	mctp_trace(INIT, "%s\n", __FUNCTION__);
+	free(g_mctp_req_msg);
+	free(g_mctp_resp_msg);
+
 	return MCTP_SUCCESS;
 }
