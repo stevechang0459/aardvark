@@ -12,10 +12,11 @@
 #include <stddef.h>
 
 static u32 m_inst_id;
+static union mctp_ctrl_message *m_mctp_msg = NULL;
 
 u16 mctp_message_append_mic(void *msg, u16 msg_size)
 {
-	u32 mic = ~crc32_le_generic(CRC_INIT, msg, msg_size, REVERSED_POLY);
+	u32 mic = ~crc32_le_generic(CRC_INIT, msg, msg_size, REVERSED_POLY_CRC32);
 	memcpy(msg + msg_size, &mic, sizeof(mic));
 	return msg_size + sizeof(mic);
 }
@@ -47,8 +48,8 @@ int mctp_send_control_request_message(
 		msg_size = mctp_message_append_mic(msg, msg_size);
 
 	print_buf(msg, msg_size, "[%s]: add mic (%d)", __FUNCTION__, msg_size);
-	fprintf(stderr, "crc: %x\n",
-	        ~crc32_le_generic(CRC_INIT, msg, msg_size - 4, REVERSED_POLY));
+	mctp_trace(DEBUG, "crc: %x\n",
+	           ~crc32_le_generic(CRC_INIT, msg, msg_size - 4, REVERSED_POLY_CRC32));
 
 	return mctp_transport_send_message(
 	               slv_addr, dst_eid, msg, msg_size,
@@ -58,7 +59,7 @@ int mctp_send_control_request_message(
 int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
                          u8 eid, bool ic, bool retry)
 {
-	int status;
+	int ret;
 	union mctp_ctrl_message *msg;
 	union mctp_req_msg_set_eid *req_data;
 
@@ -67,21 +68,61 @@ int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
 	req_data = (void *)msg->msg_data;
 	memset(req_data, 0, sizeof(*req_data));
 
+	mctp_transport_update_addr(slv_addr, eid);
 	req_data->oper = oper;
 	req_data->eid = eid;
 
 	print_buf(msg->msg_data, sizeof(*req_data), "[%s]: req data (%d)",
 	          __FUNCTION__, sizeof(*req_data));
-	status = mctp_send_control_request_message(
-	                 slv_addr, dst_eid, MCTP_CTRL_MSG_SET_EID, msg,
-	                 sizeof(*req_data), ic, retry);
+
+	ret = mctp_send_control_request_message(
+	              slv_addr, dst_eid, MCTP_CTRL_MSG_SET_EID, msg,
+	              sizeof(*req_data), ic, retry);
+	if (ret)
+		mctp_trace(ERROR, "mctp_send_control_request_message (%d)\n", ret);
 
 	free(msg);
+
+	return ret;
+}
+
+int mctp_message_handle(const union mctp_message *msg, word size)
+{
+	int status = MCTP_SUCCESS;
+	u8 mt = msg->msg_head.mt;
+
+	switch (mt) {
+	default:
+		break;
+	}
 
 	return status;
 }
 
+void *mctp_message_alloc(void)
+{
+	if (!m_mctp_msg)
+		m_mctp_msg = malloc(MCTP_MSG_SIZE_MAX);
+
+	return m_mctp_msg;
+}
+
+void mctp_message_free(void)
+{
+	if (m_mctp_msg)
+		free(m_mctp_msg);
+
+	m_mctp_msg = NULL;
+}
+
 int mctp_message_init(void)
 {
+	mctp_message_alloc();
+	return MCTP_SUCCESS;
+}
+
+int mctp_message_deinit(void)
+{
+	mctp_message_free();
 	return MCTP_SUCCESS;
 }

@@ -7,9 +7,9 @@
 #define CRC_LE_BITS                     (8)
 
 // CRC-32C (Castagnoli)
-#define POLY                            (0x1EDC6F41L)
+#define POLY_CRC32                      (0x1EDC6F41L)
 /* CRC32C polynomial in reversed bit order. */
-#define REVERSED_POLY                   (0x82F63b78L)
+#define REVERSED_POLY_CRC32             (0x82F63b78L)
 
 #define CRC_INIT                        (0xffffffffL)
 #define XO_ROT                          (0xffffffffL)

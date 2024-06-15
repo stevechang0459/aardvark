@@ -1,6 +1,30 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#define MAIN_TRACE_FILTER (0 \
+        | LSHIFT(ERROR) \
+        | LSHIFT(WARN) \
+        | LSHIFT(DEBUG) \
+        | LSHIFT(INFO) \
+        | LSHIFT(INIT) \
+        )
+
+#if 1
+extern const char *main_trace_header[];
+
+#define main_trace(type, ...) \
+do { \
+if (LSHIFT(type) & MAIN_TRACE_FILTER) \
+        fprintf(stderr, "%s", main_trace_header[type]); \
+        fprintf(stderr, __VA_ARGS__); \
+} while (0)
+#else
+#define main_trace(type, ...) { \
+if (LSHIFT(type) & MAIN_TRACE_FILTER) \
+        fprintf(stderr, "[%s]: ", #type); \
+        fprintf(stderr, __VA_ARGS__);}
+#endif
+
 enum function_index {
 	FUNC_IDX_NULL = -1,
 	FUNC_IDX_DETECT,

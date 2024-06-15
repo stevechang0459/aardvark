@@ -32,6 +32,30 @@
 // Random Number, Non-PTA / Random Number
 #define SMBUS_ADDR_TYPE_RNG             (3)
 
+#define SMBUS_TRACE_FILTER (0 \
+        | LSHIFT(ERROR) \
+        | LSHIFT(WARN) \
+        | LSHIFT(DEBUG) \
+        | LSHIFT(INFO) \
+        | LSHIFT(INIT) \
+        )
+
+#if 1
+extern const char *smbus_trace_header[];
+
+#define smbus_trace(type, ...) \
+do { \
+if (LSHIFT(type) & SMBUS_TRACE_FILTER) \
+        fprintf(stderr, "%s", smbus_trace_header[type]); \
+        fprintf(stderr, __VA_ARGS__); \
+} while (0)
+#else
+#define smbus_trace(type, ...) { \
+if (LSHIFT(type) & SMBUS_TRACE_FILTER) \
+        fprintf(stderr, "[%s]: ", #type); \
+        fprintf(stderr, __VA_ARGS__);}
+#endif
+
 enum i2c_data_direction {
 	I2C_WRITE = 0,
 	I2C_READ = 1,
@@ -59,16 +83,22 @@ enum smbus_command_code {
 	SMBUS_CMD_CODE_RAB = 0xFF
 };
 
-enum smbus_cmd_status {
-	SMBUS_CMD_SUCCESS = 0,
-	SMBUS_CMD_ERROR = 1,
+enum smbus_status {
+	SMBUS_SUCCESS = 0,
+	SMBUS_ERROR = 1,
+	SMBUS_PEC_ERR,
+
 	SMBUS_CMD_WRITE_FAILED,
 	SMBUS_CMD_READ_FAILED,
 	SMBUS_CMD_NUM_WRITTEN_MISMATCH,
 	SMBUS_CMD_NUM_READ_MISMATCH,
 	SMBUS_CMD_BYTE_CNT_ERR,
 	SMBUS_CMD_DEV_TAR_ADDR_ERR,
-	SMBUS_CMD_PEC_ERR,
+
+	SMBUS_SLV_WRITE_FAILED,
+	SMBUS_SLV_READ_FAILED,
+	SMBUS_SLV_NO_AVAILABLE_DATA,
+	SMBUS_SLV_RECV_NON_I2C_DATA,
 };
 
 union smbus_prepare_to_arp_ds {

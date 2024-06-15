@@ -70,8 +70,10 @@ struct mctp_smbus_manager {
 	bool pec_enabled;
 };
 
+int mctp_smbus_check_packet(const union mctp_smbus_header *medi_head);
 int mctp_smbus_transmit_packet(u8 dst_slv_addr, union mctp_smbus_packet *pkt,
                                u8 tran_size);
 int mctp_smbus_init(int handle, u8 src_slv_addr, bool pec_flag);
+int mctp_smbus_deinit(void);
 
 #endif // ~ MCTP_SMBUS_H
