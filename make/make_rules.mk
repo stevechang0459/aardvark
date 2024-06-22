@@ -1,19 +1,23 @@
-# Project: algo3
+# Project: aardvark
 # Makefile created by Steve Chang
-# Date modified: 2024.02.25
+# Date modified: 2024.06.22
 
 OBJS = $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
+ASMS = $(addprefix $(ASMDIR)/,$(SRCS:.c=.s))
 DEPS = $(addprefix $(OBJDIR)/,$(SRCS:.c=.c.d))
 
 # C_INCDIRS = $(foreach dir,$(MODULE_INCLUDES),$(PROJDIR)/$(dir))
 
 CFLAGS = \
+	$(OSFLAG) \
 	$(addprefix -I,$(COMMON_INCLUDE)) \
 	$(addprefix -I,$(EXTERN_INCLUDE)) \
 	$(foreach include, . $(INCLUDE), -I$(SRCDIR)/$(include)) \
 	-g -O2 -Wall
+# -g -Os -Wall
+# -g -Wall
 
-DEFINES +=-DNVME_MI_DEBUG_TRACE
+DEFINES +=
 
 # # Extra flags to give to compilers when they are supposed to invoke the linker,
 # # ‘ld’, such as -L. Libraries (-lfoo) should be added to the LDLIBS variable
@@ -37,7 +41,7 @@ ARFLAGS = \
 .PHONY: all
 all: $(LIBDIR)/$(LIBNAME)
 
-$(LIBDIR)/$(LIBNAME): $(OBJS)
+$(LIBDIR)/$(LIBNAME): $(ASMS) $(OBJS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
 ###
@@ -47,20 +51,32 @@ $(LIBDIR)/$(LIBNAME): $(OBJS)
 # 	$(CC) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $@
 
 ###
-.PHONY: allobj
-allobj: $(OBJS)
+.PHONY: objall
+objall: $(OBJS)
 
 $(OBJS): | $(OBJDIR)
 
-$(OBJDIR)/%.o : %.c
+$(OBJDIR)/%.o : $(ASMDIR)/%.s
 	$(CC) $(DEFINES) $(CFLAGS) -c $< -o $@
 
 $(OBJDIR):
 	mkdir $@
 
 ###
-.PHONY: alldep
-alldep: | $(OBJDIR)
+.PHONY: asmall
+asmall: $(ASMS)
+
+$(ASMS): | $(ASMDIR)
+
+$(ASMDIR)/%.s : %.c
+	$(CC) $(DEFINES) $(CFLAGS) -c $< -S -o $@
+
+$(ASMDIR):
+	mkdir $@
+
+###
+.PHONY: depall
+depall: | $(OBJDIR)
 	$(CC) $(DEFINES) $(CFLAGS) -M $(SRCS) > $(OBJDIR)/depend.d
 	sed -i 's|\(.*\.o:\)|$(OBJDIR)/\1|g' $(OBJDIR)/depend.d
 
@@ -68,13 +84,18 @@ alldep: | $(OBJDIR)
 .PHONY: clean
 clean:
 	rm -rf $(OBJDIR)
+	rm -rf $(ASMDIR)
 
-.PHONY: cleanobj
-cleanobj:
+.PHONY: objclean
+objclean:
 	rm -f $(OBJDIR)/*.o
 
-.PHONY: cleandep
-cleandep:
+.PHONY: asmclean
+asmclean:
+	rm -f $(ASMDIR)/*.s
+
+.PHONY: depclean
+depclean:
 	rm -f $(OBJDIR)/*.d
 
 ifeq ($(MAKECMDGOALS),all)

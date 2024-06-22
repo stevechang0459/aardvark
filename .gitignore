@@ -30,7 +30,7 @@
 
 # Executables
 *.exe
-# *.out
+*.out
 *.app
 *.i*86
 *.x86_64
@@ -52,7 +52,7 @@ Mkfile.old
 dkms.conf
 
 # Project
-.vscode
 msys.lnk
 AStyle
 _astylerc
+*.s

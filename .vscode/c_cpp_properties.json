@@ -1,0 +1,62 @@
+{
+    "configurations": [
+        {
+            "name": "MinGW32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/src/crc",
+                "${workspaceFolder}/src/utility",
+                "${workspaceFolder}/src/aardvark",
+                "${workspaceFolder}/src/smbus"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "C:\\MinGW\\bin\\gcc.exe",
+            "cStandard": "c11",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "windows-gcc-x86"
+        },
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/src/crc",
+                "${workspaceFolder}/src/mutex",
+                "${workspaceFolder}/src/thread",
+                "${workspaceFolder}/src/utility",
+                "/usr/include/x86_64-linux-gnu"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "linux",
+                "LINUX"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "linux-gcc-x64",
+            "macFrameworkPath": [],
+            "mergeConfigurations": false,
+            "compilerPath": "/usr/bin/gcc",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/**",
+                    "${workspaceFolder}/include",
+                    "${workspaceFolder}/src/crc",
+                    "${workspaceFolder}/src/mutex",
+                    "${workspaceFolder}/src/thread",
+                    "${workspaceFolder}/src/utility",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}

@@ -1,8 +1,7 @@
-# Project: algo3
+# Project: aardvark
 # Makefile created by Steve Chang
-# Date modified: 2024.02.25
+# Date modified: 2024.06.22
 
-BINNAME = aardvark.exe
 PROJDIR = $(CURDIR)
 SRCDIR 	= $(PROJDIR)/src
 LIBDIR	= $(PROJDIR)/lib
@@ -20,11 +19,101 @@ SUBDIR = \
 COMMON_INCLUDE = \
 	$(CURDIR)/include \
 
-EXTERN_LIBDIR = \
-	"C:/MinGW/lib" \
+ifeq ($(OS),Windows_NT)
+    OSFLAG += -D WIN32
+    ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
+        OSFLAG += -D AMD64
+		BINNAME = aardvark.exe
 
-EXTERN_INCLUDE = \
-	"C:/MinGW/include" \
+		EXTERN_LIBDIR = \
+			"C:/MinGW/lib" \
+
+		EXTERN_INCLUDE = \
+			"C:/MinGW/include" \
+
+    else
+        ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
+            OSFLAG += -D AMD64
+			BINNAME = aardvark.exe
+
+			EXTERN_LIBDIR = \
+				"C:/MinGW/lib" \
+
+			EXTERN_INCLUDE = \
+				"C:/MinGW/include" \
+
+        endif
+        ifeq ($(PROCESSOR_ARCHITECTURE),x86)
+            OSFLAG += -D IA32
+			BINNAME = aardvark.exe
+
+			EXTERN_LIBDIR = \
+				"C:/MinGW/lib" \
+
+			EXTERN_INCLUDE = \
+				"C:/MinGW/include" \
+
+        endif
+    endif
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Linux)
+        OSFLAG += -D LINUX
+		BINNAME = aardvark
+
+		EXTERN_LIBDIR = \
+			"/usr/lib" \
+
+		EXTERN_INCLUDE = \
+			"/usr/include" \
+
+    endif
+    ifeq ($(UNAME_S),Darwin)
+        OSFLAG += -D OSX
+		BINNAME = aardvark
+
+		EXTERN_LIBDIR = \
+			"/usr/lib" \
+
+		EXTERN_INCLUDE = \
+			"/usr/include" \
+
+    endif
+    UNAME_P := $(shell uname -p)
+    ifeq ($(UNAME_P),x86_64)
+        OSFLAG += -D AMD64
+		BINNAME = aardvark
+
+		EXTERN_LIBDIR = \
+			"/usr/lib" \
+
+		EXTERN_INCLUDE = \
+			"/usr/include" \
+
+    endif
+    ifneq ($(filter %86,$(UNAME_P)),)
+        OSFLAG += -D IA32
+		BINNAME = aardvark
+
+		EXTERN_LIBDIR = \
+			"/usr/lib" \
+
+		EXTERN_INCLUDE = \
+			"/usr/include" \
+
+    endif
+    ifneq ($(filter arm%,$(UNAME_P)),)
+        OSFLAG += -D ARM
+		BINNAME = aardvark
+
+		EXTERN_LIBDIR = \
+			"/usr/lib" \
+
+		EXTERN_INCLUDE = \
+			"/usr/include" \
+
+    endif
+endif
 
 CC = gcc
 AR = ar
@@ -66,9 +155,11 @@ export EXTERN_LIBDIR
 export EXTERN_INCLUDE
 export CC AR
 export MAKE_RULES
+export OSFLAG
 
 .PHONY: all
 all:
+	@echo $(OSFLAG)
 	mkdir -p $(BINDIR)
 	mkdir -p $(LIBDIR)
 	for dir in $(SUBDIR); do \
@@ -89,32 +180,32 @@ clean:
 		cd $(CURDIR); \
 	done
 
-.PHONY: allobj
-allobj:
+.PHONY: objall
+objall:
 	for dir in $(SUBDIR); do \
 		cd $$dir; \
 		make -j $@; \
 		cd $(CURDIR); \
 	done
 
-.PHONY: cleanobj
-cleanobj:
+.PHONY: objclean
+objclean:
 	for dir in $(SUBDIR); do \
 		cd $$dir; \
 		make -j $@; \
 		cd $(CURDIR); \
 	done
 
-.PHONY: alldep
-alldep:
+.PHONY: depall
+depall:
 	for dir in $(SUBDIR); do \
 		cd $$dir; \
 		make -j $@; \
 		cd $(CURDIR); \
 	done
 
-.PHONY: cleandep
-cleandep:
+.PHONY: depclean
+depclean:
 	for dir in $(SUBDIR); do \
 		cd $$dir; \
 		make -j $@; \

@@ -19,7 +19,7 @@ Aardvark I2C/SPI Host Adapter User Manual
 
 ```bash
 # Create dependency files for the source code
-make alldep
+make depall
 # Compile the source code
 make
 ```
