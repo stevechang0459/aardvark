@@ -114,7 +114,7 @@ union mctp_resp_data_set_eid {
 } __attribute__((packed));
 
 struct mctp_message_manager {
-	union mctp_ctrl_msg_header ctrl_msg_head;
+	// union mctp_ctrl_msg_header ctrl_msg_head;
 	byte inst_id;
 };
 

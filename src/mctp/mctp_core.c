@@ -82,7 +82,7 @@ int mctp_init(int handle, u8 owner_eid, u8 tar_eid, u8 src_slv_addr,
               u16 nego_size, bool pec_flag)
 {
 	int ret;
-	mctp_trace(INIT, "%s\n", __FUNCTION__);
+	mctp_trace(INIT, "%s\n", __func__);
 
 	ret = mctp_message_init();
 	if (ret) {
@@ -107,7 +107,7 @@ int mctp_init(int handle, u8 owner_eid, u8 tar_eid, u8 src_slv_addr,
 
 int mctp_deinit(void)
 {
-	mctp_trace(INIT, "%s\n", __FUNCTION__);
+	mctp_trace(INIT, "%s\n", __func__);
 
 	mctp_message_deinit();
 	mctp_transport_deinit();

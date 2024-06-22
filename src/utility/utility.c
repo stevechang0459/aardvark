@@ -14,7 +14,7 @@ void *aligned_alloc(size_t size, u32 align)
 		addr        = (size_t)ptr + align + sizeof(size_t);
 		aligned_ptr = (void *)(addr - (addr % align));
 		*((size_t *)aligned_ptr - 1) = (size_t)ptr;
-		// printf("[%s](%x,%x)\n", __FUNCTION__, ptr, aligned_ptr);
+		// printf("[%s](%x,%x)\n", __func__, ptr, aligned_ptr);
 	} else {
 		return NULL;
 	}
@@ -24,7 +24,7 @@ void *aligned_alloc(size_t size, u32 align)
 
 void aligned_free(void *aligned_ptr)
 {
-	// printf("[%s](%x,%x)\n", __FUNCTION__, *((size_t *)aligned_ptr - 1), aligned_ptr);
+	// printf("[%s](%x,%x)\n", __func__, *((size_t *)aligned_ptr - 1), aligned_ptr);
 	free((void *)(*((size_t *)aligned_ptr - 1)));
 }
 
@@ -55,7 +55,7 @@ void print_buf(const void *buf, size_t len, const char *title, ...)
 	}
 
 	if (len == 0) {
-		printf("[%s][%d] SIZE is zero.\n\n", __FUNCTION__, __LINE__);
+		printf("[%s][%d] SIZE is zero.\n\n", __func__, __LINE__);
 		return;
 	}
 

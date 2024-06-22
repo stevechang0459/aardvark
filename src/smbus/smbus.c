@@ -221,7 +221,7 @@ int smbus_write64(Aardvark handle, u8 slv_addr, u8 cmd_code, u64 u64_data,
 }
 
 int smbus_block_write(Aardvark handle, u8 slv_addr, u8 cmd_code,
-                      u8 byte_cnt, const void *buf, bool pec_flag)
+                      u8 byte_cnt, const void *buf, u8 pec_flag)
 {
 	int ret, status;
 	u16 num_bytes, num_written;
@@ -235,6 +235,8 @@ int smbus_block_write(Aardvark handle, u8 slv_addr, u8 cmd_code,
 	if (pec_flag) {
 		++num_bytes;
 		data[num_bytes] = crc8(data, num_bytes);
+		if (pec_flag == 2)
+			data[num_bytes] = data[num_bytes] ^ 0xFF;
 	}
 
 	status = aa_i2c_write_ext(handle, slv_addr, AA_I2C_NO_FLAGS,
@@ -417,7 +419,7 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 tar_addr,
 		pec = crc8(data, num_bytes);
 		if (p->pec != pec) {
 			smbus_trace(ERROR, "[%s]:pec mismatch (%02x,%02x)\n",
-			            __FUNCTION__, p->pec, pec);
+			            __func__, p->pec, pec);
 			ret = -SMBUS_PEC_ERR;
 			goto dump;
 		}
@@ -521,14 +523,14 @@ int smbus_arp_cmd_assign_address(Aardvark handle, const union udid_ds *udid,
 	                          &data[1], &num_written);
 	if (status) {
 		smbus_trace(ERROR, "[%s]:aa_i2c_write_ext failed (%d)\n",
-		            __FUNCTION__, status);
+		            __func__, status);
 		ret = -SMBUS_CMD_WRITE_FAILED;
 		goto dump;
 	}
 
 	if (smbus_verify_byte_written(num_bytes, num_written)) {
 		smbus_trace(ERROR, "[%s]:num written mismatch (%d,%d)\n",
-		            __FUNCTION__, num_bytes, num_written);
+		            __func__, num_bytes, num_written);
 		ret = -SMBUS_CMD_NUM_WRITTEN_MISMATCH;
 		goto dump;
 	}

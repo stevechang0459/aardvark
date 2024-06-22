@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 	char *end, *bit_rate_opt = NULL, *host_addr_opt = NULL;
 	int func_idx = FUNC_IDX_NULL;
 	int all_addr = 0, pec = 0,  power = 0, pull_up = 0, version = 0, manual = 0,
-	    directed = 0, i2c_slave_mode = 0;
+	    directed = 0, i2c_slave_mode = 0, wrong_pec = 0;
 	int opt, port, real_bit_rate, bit_rate, slv_addr, cmd_code;
 	const char *file_name;
 
@@ -234,6 +234,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'v':
 			version = 1;
+			break;
+		case 'w':
+			wrong_pec = 1;
 			break;
 		case 'h':
 			manual = 1;
@@ -445,6 +448,7 @@ int main(int argc, char *argv[])
 			block[byte_cnt] = value;
 		}
 
+		pec = !wrong_pec ? pec : 2;
 		int ret = smbus_block_write(handle, slv_addr, cmd_code, byte_cnt,
 		                            block, pec);
 		if (ret)
@@ -567,9 +571,10 @@ int main(int argc, char *argv[])
 	case FUNC_IDX_TEST_MCTP: {
 		int ret;
 		union udid_ds udid;
-		u8 host_addr, owner_eid, tar_eid;
+		u8 host_addr;
+		int owner_eid, tar_eid;
 
-		if (check_argc(argc, optind + 4, optind + 4))
+		if (check_argc(argc, optind + 5, optind + 5))
 			main_exit(EXIT_FAILURE, handle, func_idx, NULL);
 
 		if (i2c_slave_mode) {
@@ -587,9 +592,20 @@ int main(int argc, char *argv[])
 			goto out;
 
 		owner_eid = parse_eid(argv[i++]);
-		if (owner_eid < 0)
+		if (owner_eid < 0 || owner_eid < 8) {
+			main_trace(ERROR, "wrong owner_eid (%d)\n",
+				owner_eid);
 			goto out;
+		}
 
+		tar_eid = parse_eid(argv[i++]);
+		if (tar_eid < 0 || tar_eid < 8 || owner_eid == tar_eid) {
+			main_trace(ERROR, "wrong tar_eid (%d,%d)\n",
+				owner_eid, tar_eid);
+			goto out;
+		}
+
+		main_trace(INFO, "eid (%d,%d)\n", owner_eid, tar_eid);
 		ret = smbus_arp_cmd_prepare_to_arp(handle, pec);
 		if (ret) {
 			main_trace(ERROR, "smbus_arp_cmd_prepare_to_arp (%d)\n", ret);
@@ -621,8 +637,8 @@ int main(int argc, char *argv[])
 		reverse(&udid, sizeof(udid));
 		print_udid(&udid);
 
-		owner_eid = (owner_eid == 0 ? 8 : owner_eid);
-		tar_eid = (owner_eid == 0xfe ? owner_eid - 1 : owner_eid + 1);
+		// owner_eid = (owner_eid == 0 ? 8 : owner_eid);
+		// tar_eid = (owner_eid == 0xfe ? owner_eid - 1 : owner_eid + 1);
 
 		ret = mctp_init(handle, owner_eid, tar_eid, SMBUS_ADDR_IPMI_BMC,
 		                MCTP_BASELINE_TRAN_UNIT_SIZE, pec);

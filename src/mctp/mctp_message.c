@@ -45,13 +45,13 @@ int mctp_send_control_request_message(
 	msg->ctrl_msg_head.inst_id = m_mctp_msg_mgr.inst_id;
 	msg->ctrl_msg_head.cmd_code = cmd_code;
 
-	m_mctp_msg_mgr.ctrl_msg_head.value = msg->ctrl_msg_head.value;
+	// m_mctp_msg_mgr.ctrl_msg_head.value = msg->ctrl_msg_head.value;
 
-	print_buf(msg, msg_size, "[%s]: msg (%d)", __FUNCTION__, msg_size);
+	print_buf(msg, msg_size, "[%s]: msg (%d)", __func__, msg_size);
 	if (ic)
 		msg_size = mctp_message_append_mic(msg, msg_size);
 
-	print_buf(msg, msg_size, "[%s]: add mic (%d)", __FUNCTION__, msg_size);
+	print_buf(msg, msg_size, "[%s]: add mic (%d)", __func__, msg_size);
 	mctp_trace(DEBUG, "crc: %x\n",
 	           ~crc32_le_generic(CRC_INIT, msg, msg_size - 4, REVERSED_POLY_CRC32));
 
@@ -77,7 +77,7 @@ int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
 	req_data->eid = eid;
 
 	print_buf(msg->msg_data, sizeof(*req_data), "[%s]: req data (%d)",
-	          __FUNCTION__, sizeof(*req_data));
+	          __func__, sizeof(*req_data));
 
 	ret = mctp_send_control_request_message(
 	              slv_addr, dst_eid, MCTP_CTRL_MSG_SET_EID, msg,
@@ -109,6 +109,7 @@ u8 mctp_ctrl_resp_set_eid(const union mctp_ctrl_message *msg)
 	u8 cmpl_code = msg->ctrl_msg_head.cmpl_code;
 	const union mctp_resp_data_set_eid *resp_data = (void *)msg->msg_data;
 
+	mctp_trace(INFO, "Set Endpoint ID response message:\n");
 	mctp_trace(INFO, "Completion code = %x\n", cmpl_code);
 	mctp_trace(INFO, "Endpoint ID Allocation Status = %s\n",
 	           eid_alloc_sts[resp_data->eid_alloc_sts]);
@@ -116,6 +117,7 @@ u8 mctp_ctrl_resp_set_eid(const union mctp_ctrl_message *msg)
 	           eid_assign_sts[resp_data->eid_assign_sts]);
 	mctp_trace(INFO, "EID Setting = %x\n", resp_data->eid_setting);
 	mctp_trace(INFO, "EID Pool Size = %x\n", resp_data->eid_poll_size);
+	mctp_trace(INFO, "\n");
 
 	return cmpl_code;
 }
@@ -192,7 +194,7 @@ int mctp_message_handle(const union mctp_message *msg, u16 size)
 
 int mctp_message_init(void)
 {
-	mctp_trace(INIT, "%s\n", __FUNCTION__);
+	mctp_trace(INIT, "%s\n", __func__);
 	memset(&m_mctp_msg_mgr, 0, sizeof(m_mctp_msg_mgr));
 	g_mctp_req_msg = malloc(MCTP_MSG_SIZE_MAX);
 	g_mctp_resp_msg = malloc(MCTP_MSG_SIZE_MAX);
@@ -202,7 +204,7 @@ int mctp_message_init(void)
 
 int mctp_message_deinit(void)
 {
-	mctp_trace(INIT, "%s\n", __FUNCTION__);
+	mctp_trace(INIT, "%s\n", __func__);
 	free(g_mctp_req_msg);
 	free(g_mctp_resp_msg);
 

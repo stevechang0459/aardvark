@@ -63,7 +63,7 @@ int mctp_transport_transmit_packet(
 
 	tran_size += sizeof(pkt->tran_head);
 	print_buf(&pkt->tran_head, tran_size, "[%s]: pkt (%d)",
-	          __FUNCTION__, tran_size);
+	          __func__, tran_size);
 
 	ret = mctp_smbus_transmit_packet(slv_addr, pkt, tran_size);
 	if (ret)
@@ -393,7 +393,7 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 
 int mctp_transport_init(u8 owner_eid, u8 tar_eid, u16 nego_size)
 {
-	mctp_trace(INIT, "%s\n", __FUNCTION__);
+	mctp_trace(INIT, "%s\n", __func__);
 	memset(&m_mctp_tran_mgr, 0, sizeof(m_mctp_tran_mgr));
 
 	m_mctp_addr_map = malloc(MCTP_ADDR_MAP_SIZE);
@@ -420,7 +420,7 @@ int mctp_transport_init(u8 owner_eid, u8 tar_eid, u16 nego_size)
 
 int mctp_transport_deinit(void)
 {
-	mctp_trace(INIT, "%s\n", __FUNCTION__);
+	mctp_trace(INIT, "%s\n", __func__);
 	free(m_mctp_addr_map);
 
 	return MCTP_SUCCESS;
