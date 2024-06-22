@@ -44,6 +44,7 @@ u8 mctp_transport_search_addr(u8 eid);
 void mctp_transport_update_addr(u8 addr, u8 eid);
 u16 mctp_transport_get_message_size(const union mctp_message *msg);
 void mctp_transport_clear_state(dword val);
+bool mctp_transport_req_sent(void);
 bool mctp_transport_ic_set(const union mctp_message *msg);
 bool mctp_transport_som_received(void);
 bool mctp_transport_eom_received(void);
