@@ -29,7 +29,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/aardvark",
-            "args": ["-kcpu", "detect", "0"],
+            "args": ["-kcpu", "smb-send-byte", "0", "0x1d", "0x5a"],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
             "environment": [],

@@ -43,7 +43,7 @@ extern const char *mctp_trace_header[];
 
 #define mctp_trace(type, ...) \
 do { \
-if (LSHIFT(type) & MCTP_TRACE_FILTER) { \
+	if (LSHIFT(type) & MCTP_TRACE_FILTER) { \
         fprintf(stderr, "%s", mctp_trace_header[type]); \
         fprintf(stderr, __VA_ARGS__);} \
 } while (0)

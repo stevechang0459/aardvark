@@ -26,8 +26,6 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/include",
                 "${workspaceFolder}/src/crc",
-                "${workspaceFolder}/src/mutex",
-                "${workspaceFolder}/src/thread",
                 "${workspaceFolder}/src/utility",
                 "/usr/include/x86_64-linux-gnu"
             ],
@@ -49,8 +47,6 @@
                     "${workspaceFolder}/**",
                     "${workspaceFolder}/include",
                     "${workspaceFolder}/src/crc",
-                    "${workspaceFolder}/src/mutex",
-                    "${workspaceFolder}/src/thread",
                     "${workspaceFolder}/src/utility",
                     "${workspaceFolder}"
                 ],

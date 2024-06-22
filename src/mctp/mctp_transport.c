@@ -408,7 +408,7 @@ int mctp_transport_init(u8 owner_eid, u8 tar_eid, u16 nego_size)
 	mctp_trace(INIT, "owner = 0x%02x, eid = 0x%02x\n",
 	           m_mctp_tran_mgr.owner_eid, m_mctp_tran_mgr.tar_eid);
 	mctp_trace(INIT, "sizeof(m_mctp_tran_mgr) = %d\n",
-	           sizeof(m_mctp_tran_mgr));
+	           (u32)sizeof(m_mctp_tran_mgr));
 
 	mctp_trace(INIT, "negotiated transfer size = %d\n",
 	           m_mctp_tran_mgr.nego_size);

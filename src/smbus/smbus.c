@@ -643,7 +643,7 @@ out:
 
 void print_udid(const union udid_ds *udid)
 {
-	smbus_trace(INFO, "sizeof(udid_ds) = %d\n", sizeof(union udid_ds));
+	smbus_trace(INFO, "sizeof(udid_ds) = %d\n", (u32)sizeof(union udid_ds));
 
 	smbus_trace(INFO, "udid->dev_cap.value = %x\n", udid->dev_cap.value);
 	smbus_trace(INFO, "PEC Supported = %d\n", udid->dev_cap.pec_sup);

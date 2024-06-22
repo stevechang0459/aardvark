@@ -77,7 +77,7 @@ int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
 	req_data->eid = eid;
 
 	print_buf(msg->msg_data, sizeof(*req_data), "[%s]: req data (%d)",
-	          __func__, sizeof(*req_data));
+	          __func__, (u32)sizeof(*req_data));
 
 	ret = mctp_send_control_request_message(
 	              slv_addr, dst_eid, MCTP_CTRL_MSG_SET_EID, msg,

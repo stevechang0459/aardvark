@@ -6,9 +6,10 @@
 
 #include <stddef.h>
 
+#ifdef WIN32
 void *aligned_alloc(size_t size, u32 align);
 void aligned_free(void *aligned_ptr);
-
+#endif
 size_t strlen(const char *s);
 void print_buf(const void *buf, size_t size, const char *title, ...);
 void reverse(void *in, u32 len);

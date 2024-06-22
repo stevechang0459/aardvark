@@ -45,7 +45,7 @@ extern const char *smbus_trace_header[];
 
 #define smbus_trace(type, ...) \
 do { \
-if (LSHIFT(type) & SMBUS_TRACE_FILTER) \
+	if (LSHIFT(type) & SMBUS_TRACE_FILTER) \
         fprintf(stderr, "%s", smbus_trace_header[type]); \
         fprintf(stderr, __VA_ARGS__); \
 } while (0)

@@ -4,6 +4,7 @@
 
 #include "utility.h"
 
+#ifdef WIN32
 void *aligned_alloc(size_t size, u32 align)
 {
 	size_t addr;
@@ -27,6 +28,7 @@ void aligned_free(void *aligned_ptr)
 	// printf("[%s](%x,%x)\n", __func__, *((size_t *)aligned_ptr - 1), aligned_ptr);
 	free((void *)(*((size_t *)aligned_ptr - 1)));
 }
+#endif
 
 /*
  *  strlen - Find the length of a string
@@ -43,8 +45,7 @@ size_t strlen(const char *s)
 
 void print_buf(const void *buf, size_t len, const char *title, ...)
 {
-	u32 i, addr = (u32)buf;
-	u32 j, p;
+	u32 i, j, p;
 
 	if (title) {
 		va_list argp;
@@ -59,7 +60,7 @@ void print_buf(const void *buf, size_t len, const char *title, ...)
 		return;
 	}
 
-	printf("0x%08X: ", addr);
+	printf("0x%p: ", buf);
 
 	for (i = 0; i < len; i++) {
 		if (i) {
@@ -72,7 +73,7 @@ void print_buf(const void *buf, size_t len, const char *title, ...)
 						printf("%c", ((u8 *)buf)[j]);
 					}
 				}
-				printf("\n0x%08X: ", addr + i);
+				printf("\n0x%p: ", buf + i);
 				p = 1;
 			} else if (i % 8 == 0) {
 				printf(" ");

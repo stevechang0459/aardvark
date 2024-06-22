@@ -20,6 +20,11 @@
 #include <string.h>
 #include <stdarg.h>
 
+#include <errno.h>
+
+extern char *optarg;
+extern int optind;
+
 const struct function_list func_list[] = {
 	{"detect", FUNC_IDX_DETECT},
 	{"smb-send-byte", FUNC_IDX_SMB_SEND_BYTE},
@@ -338,7 +343,7 @@ int main(int argc, char *argv[])
 			goto out;
 
 		uint32_t data = strtoul(argv[optind + 3], &end, 0);
-		if (*end || errno) {
+		if (*end || errno == -ERANGE) {
 			perror("strtoul");
 			main_exit(EXIT_FAILURE, handle, -1,
 			          "error: invalid data value '%s'\n",
@@ -385,7 +390,7 @@ int main(int argc, char *argv[])
 		}
 
 		uint64_t data = strtoull(argv[optind + 4], &end, 0);
-		if (*end || errno) {
+		if (*end || errno == -EINVAL || errno == -ERANGE) {
 			perror("strtoull");
 			main_exit(EXIT_FAILURE, handle, -1,
 			          "error: invalid data value '%s'\n",
