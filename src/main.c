@@ -598,15 +598,13 @@ int main(int argc, char *argv[])
 
 		owner_eid = parse_eid(argv[i++]);
 		if (owner_eid < 0 || owner_eid < 8) {
-			main_trace(ERROR, "wrong owner_eid (%d)\n",
-				owner_eid);
+			main_trace(ERROR, "wrong owner_eid (%d)\n", owner_eid);
 			goto out;
 		}
 
 		tar_eid = parse_eid(argv[i++]);
 		if (tar_eid < 0 || tar_eid < 8 || owner_eid == tar_eid) {
-			main_trace(ERROR, "wrong tar_eid (%d,%d)\n",
-				owner_eid, tar_eid);
+			main_trace(ERROR, "wrong tar_eid (%d,%d)\n", owner_eid, tar_eid);
 			goto out;
 		}
 

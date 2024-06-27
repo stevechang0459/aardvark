@@ -14,7 +14,7 @@ extern const char *main_trace_header[];
 
 #define main_trace(type, ...) \
 do { \
-	if (LSHIFT(type) & MAIN_TRACE_FILTER) \
+        if (LSHIFT(type) & MAIN_TRACE_FILTER) \
         fprintf(stderr, "%s", main_trace_header[type]); \
         fprintf(stderr, __VA_ARGS__); \
 } while (0)

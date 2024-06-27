@@ -164,8 +164,7 @@ all:
 	mkdir -p $(LIBDIR)
 	for dir in $(SUBDIR); do \
 		cd $$dir; \
-		# make -j $@; \
-		make $@; \
+		make -j $@; \
 		cd $(CURDIR); \
 	done
 	$(CC) $(LDFLAGS) $(LDLIBS) -o $(BINDIR)/$(BINNAME)
