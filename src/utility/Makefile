@@ -1,6 +1,6 @@
-# Project: algo3
+# Project: aardvark
 # Makefile created by Steve Chang
-# Date modified: 2024.02.25
+# Date modified: 2024.06.22
 
 LIBNAME = libutility.a
 

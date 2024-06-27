@@ -73,7 +73,7 @@ void print_buf(const void *buf, size_t len, const char *title, ...)
 						printf("%c", ((u8 *)buf)[j]);
 					}
 				}
-				printf("\n0x%p: ", buf + i);
+				printf("\n0x%p: ", (u8 *)buf + i);
 				p = 1;
 			} else if (i % 8 == 0) {
 				printf(" ");
