@@ -31,11 +31,11 @@
 #define MCTP_BASELINE_TRAN_UNIT_SIZE    (64)
 
 #define MCTP_TRACE_FILTER (0 \
-        | LSHIFT(ERROR) \
-        | LSHIFT(WARN) \
-        | LSHIFT(DEBUG) \
-        | LSHIFT(INFO) \
-        | LSHIFT(INIT) \
+        | BITLSHIFT(1, ERROR) \
+        | BITLSHIFT(1, WARN) \
+        | BITLSHIFT(1, DEBUG) \
+        | BITLSHIFT(1, INFO) \
+        | BITLSHIFT(1, INIT) \
         )
 
 #if 1
@@ -43,13 +43,13 @@ extern const char *mctp_trace_header[];
 
 #define mctp_trace(type, ...) \
 do { \
-        if (LSHIFT(type) & MCTP_TRACE_FILTER) { \
+        if (BITLSHIFT(1, type) & MCTP_TRACE_FILTER) { \
         fprintf(stderr, "%s", mctp_trace_header[type]); \
         fprintf(stderr, __VA_ARGS__);} \
 } while (0)
 #else
 #define mctp_trace(type, ...) { \
-if (LSHIFT(type) & MCTP_TRACE_FILTER) \
+if (BITLSHIFT(1, type) & MCTP_TRACE_FILTER) \
         fprintf(stderr, "[%s]: ", #type); \
         fprintf(stderr, __VA_ARGS__);}
 #endif

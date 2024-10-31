@@ -132,7 +132,8 @@ typedef int ret_code;
 #define MB (KB * KB)
 #define GB (MB * KB)
 
-#define LSHIFT(n)                       ((u32)1 << (n))
+#define BITLSHIFT(v, n)                 ((u32)(v) << (n))
+#define BITRSHIFT(v, n)                 ((u32)(v) >> (n))
 
 // #define likely(x)                       __builtin_expect((x), 1)
 // #define unlikely(x)                     __builtin_expect((x), 0)

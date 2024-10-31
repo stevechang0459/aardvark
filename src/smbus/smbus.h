@@ -33,11 +33,11 @@
 #define SMBUS_ADDR_TYPE_RNG             (3)
 
 #define SMBUS_TRACE_FILTER (0 \
-        | LSHIFT(ERROR) \
-        | LSHIFT(WARN) \
-        | LSHIFT(DEBUG) \
-        | LSHIFT(INFO) \
-        | LSHIFT(INIT) \
+        | BITLSHIFT(1, ERROR) \
+        | BITLSHIFT(1, WARN) \
+        | BITLSHIFT(1, DEBUG) \
+        | BITLSHIFT(1, INFO) \
+        | BITLSHIFT(1, INIT) \
         )
 
 #if 1
@@ -45,13 +45,13 @@ extern const char *smbus_trace_header[];
 
 #define smbus_trace(type, ...) \
 do { \
-        if (LSHIFT(type) & SMBUS_TRACE_FILTER) \
+        if (BITLSHIFT(1, type) & SMBUS_TRACE_FILTER) \
         fprintf(stderr, "%s", smbus_trace_header[type]); \
         fprintf(stderr, __VA_ARGS__); \
 } while (0)
 #else
 #define smbus_trace(type, ...) { \
-if (LSHIFT(type) & SMBUS_TRACE_FILTER) \
+if (BITLSHIFT(1, type) & SMBUS_TRACE_FILTER) \
         fprintf(stderr, "[%s]: ", #type); \
         fprintf(stderr, __VA_ARGS__);}
 #endif
