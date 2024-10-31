@@ -10,8 +10,6 @@
         )
 
 #if 1
-// extern const char *main_trace_header[];
-
 #define main_trace(type, ...) \
 do { \
         if (BITLSHIFT(1, type) & MAIN_TRACE_FILTER) \
