@@ -123,10 +123,10 @@ export C_FILE_EXT
 
 .PHONY: all
 all:
-	cp $(DLLDIR)/*.dll $(BINDIR)
-	@echo $(OSFLAG)
 	mkdir -p $(BINDIR)
 	mkdir -p $(LIBDIR)
+	cp $(DLLDIR)/*.dll $(BINDIR)
+	@echo $(OSFLAG)
 	for dir in $(SUBDIR); do \
 		cd $$dir; \
 		# make -j $@; \

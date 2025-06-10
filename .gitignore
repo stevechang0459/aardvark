@@ -57,3 +57,4 @@ AStyle
 _astylerc
 *.s
 **/*.code-workspace
+**/bin
