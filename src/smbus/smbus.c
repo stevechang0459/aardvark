@@ -13,11 +13,11 @@
 #include <stdarg.h>
 
 const char *smbus_trace_header[TRACE_TYPE_MAX] =  {
-	"SMBus: error: ",
-	"SMBus: warning: ",
-	"SMBus: debug: ",
-	"SMBus: info: ",
-	"SMBus: init: ",
+	"[SMBus] error: ",
+	"[SMBus] warning: ",
+	"[SMBus] debug: ",
+	"[SMBus] info: ",
+	"[SMBus] init: ",
 };
 
 static char *smbus_addr_type[] = {
@@ -59,20 +59,17 @@ static int smbus_verify_byte_written(int num_bytes, int num_written)
 {
 	if (num_written < 0) {
 		smbus_trace(ERROR, "%s\n", aa_status_string(num_written));
-		return -1;
 	} else if (num_written == 0) {
 		smbus_trace(ERROR, "no bytes written\n");
 		smbus_trace(ERROR, "  are you sure you have the right slave address?\n");
-		return -1;
 	} else if (num_written != num_bytes) {
 		smbus_trace(ERROR, "only a partial number of bytes written\n");
-		smbus_trace(ERROR, "  (%d) instead of full (%d)\n", num_written,
-		            num_bytes);
-		return -1;
+		smbus_trace(ERROR, "  (%d) instead of full (%d)\n", num_written, num_bytes);
 	} else {
-		// smbus_trace(ERROR, "wr:%d,tx:%d\n", num_bytes, num_written);
+		smbus_trace(ERROR, "num_bytes:%d, num_written:%d\n", num_bytes, num_written);
 		return 0;
 	}
+	return -1;
 }
 
 static int smbus_verify_byte_read(int num_bytes, int num_read)

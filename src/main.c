@@ -50,11 +50,11 @@ const struct function_list func_list[] = {
 };
 
 const char *main_trace_header[TRACE_TYPE_MAX] =  {
-	"aardvark: error: ",
-	"aardvark: warning: ",
-	"aardvark: debug: ",
-	"aardvark: info: ",
-	"aardvark: init: ",
+	"[aardvark] error: ",
+	"[aardvark] warning: ",
+	"[aardvark] debug: ",
+	"[aardvark] info: ",
+	"[aardvark] init: ",
 };
 
 static int m_keep_power = 0;

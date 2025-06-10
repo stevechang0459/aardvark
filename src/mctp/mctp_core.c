@@ -12,11 +12,11 @@
 #include <stdlib.h>
 
 const char *mctp_trace_header[TRACE_TYPE_MAX] =  {
-	"mctp: error: ",
-	"mctp: warning: ",
-	"mctp: debug: ",
-	"mctp: info: ",
-	"mctp: init: ",
+	"[mctp] error: ",
+	"[mctp] warning: ",
+	"[mctp] debug: ",
+	"[mctp] info: ",
+	"[mctp] init: ",
 };
 
 int mctp_receive_packet_handle(const void *buf, u32 len)

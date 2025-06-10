@@ -52,11 +52,9 @@ int mctp_send_control_request_message(u8 slv_addr, u8 dst_eid, enum mctp_ctrl_cm
 		msg_size = mctp_message_append_mic(msg, msg_size);
 
 	print_buf(msg, msg_size, "[%s]: add mic (%d)", __func__, msg_size);
-	mctp_trace(DEBUG, "crc: %x\n",
-	           ~crc32_le_generic(CRC_INIT, msg, msg_size - 4, REVERSED_POLY_CRC32));
+	mctp_trace(DEBUG, "crc: %x\n", ~crc32_le_generic(CRC_INIT, msg, msg_size - 4, REVERSED_POLY_CRC32));
 
-	return mctp_transport_send_message(slv_addr, dst_eid, msg, msg_size,
-	                                   MCTP_MSG_TYPE_NVME_MM, 1);
+	return mctp_transport_send_message(slv_addr, dst_eid, msg, msg_size, MCTP_MSG_TYPE_NVME_MM, 1);
 }
 
 int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
