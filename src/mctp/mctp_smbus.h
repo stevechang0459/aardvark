@@ -25,9 +25,8 @@
 #define MCTP_HEADER_VERSION             (1)
 
 #define MCTP_TRAN_UNIT_SIZE_MAX         (250)
-#define MCTP_SMBUS_PACKET_SIZE \
-        (sizeof(union mctp_smbus_header) + sizeof(u32) \
-        + MCTP_TRAN_UNIT_SIZE_MAX + OPT_SMBUS_PEC_SUPPORT)
+#define MCTP_SMBUS_PACKET_SIZE          (sizeof(union mctp_smbus_header) + sizeof(u32) + \
+                                        MCTP_TRAN_UNIT_SIZE_MAX + OPT_SMBUS_PEC_SUPPORT)
 
 /**
  * DSP0237
@@ -64,7 +63,7 @@ union mctp_smbus_packet {
 	u8 data[MCTP_SMBUS_PACKET_SIZE];
 } __attribute__((packed));
 
-struct mctp_smbus_manager {
+struct mctp_smbus_context {
 	int handle;
 	u8 src_slv_addr;
 	bool pec_enabled;

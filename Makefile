@@ -24,6 +24,7 @@ SUBDIR = \
 	src/aardvark \
 	src/smbus \
 	src/mctp \
+	src/nvme \
 
 COMMON_INCLUDE = \
 	$(CURDIR)/include \
@@ -93,6 +94,7 @@ LIBS = \
 	main \
 	smbus \
 	mctp \
+	nvme \
 	aardvark \
 	checksum \
 	crc \

@@ -19,6 +19,16 @@ typedef int8_t s8;
 typedef int16_t s16;
 typedef int32_t s32;
 typedef int64_t s64;
+
+typedef uint64_t __le64;
+typedef uint32_t __le32;
+typedef uint16_t __le16;
+typedef uint8_t __u8;
+
+typedef uint64_t __u64;
+typedef uint32_t __u32;
+typedef uint16_t __u16;
+
 #else
 /* Microsoft compilers (Visual C++) */
 typedef unsigned __int8 u8;

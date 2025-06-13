@@ -40,14 +40,18 @@ static void dump_packet(const void *buf, int packet_len, const char *fmt, ...)
 		va_start(argp, fmt);
 		vfprintf(stderr, fmt, argp);
 		va_end(argp);
-		fputc('\n', stderr);
+		// fputc('\n', stderr);
 	}
 
 	for (int i = 0; i < packet_len; ++i) {
 		if ((i & 0x0f) == 0) {
 			fprintf(stderr, "\n%04x:  ", i);
 		}
-		fprintf(stderr, "%02x ", c[i] & 0xff);
+		if (i < 3 || i == (packet_len - 1)) {
+			fprintf(stderr, "\033[7m%02x \033[0m", c[i] & 0xff);
+		} else {
+			fprintf(stderr, "%02x ", c[i] & 0xff);
+		}
 		if (((i + 1) & 0x07) == 0) {
 			fprintf(stderr, " ");
 		}
@@ -64,9 +68,9 @@ static int smbus_verify_byte_written(int num_bytes, int num_written)
 		smbus_trace(ERROR, "  are you sure you have the right slave address?\n");
 	} else if (num_written != num_bytes) {
 		smbus_trace(ERROR, "only a partial number of bytes written\n");
-		smbus_trace(ERROR, "  (%d) instead of full (%d)\n", num_written, num_bytes);
+		smbus_trace(ERROR, "  (%d) instead of full (%d)\n", num_written + 1, num_bytes + 1);
 	} else {
-		smbus_trace(ERROR, "num_bytes:%d, num_written:%d\n", num_bytes, num_written);
+		smbus_trace(INFO, "num_bytes:%d, num_written:%d\n", num_bytes + 1, num_written + 1);
 		return 0;
 	}
 	return -1;
@@ -86,7 +90,7 @@ static int smbus_verify_byte_read(int num_bytes, int num_read)
 		smbus_trace(ERROR, "  (%d) instead of full (%d)\n", num_read, num_bytes);
 		return -1;
 	} else {
-		// smbus_trace(ERROR, "wr:%d,tx:%d\n", num_bytes, num_read);
+		smbus_trace(INFO, "num_bytes:%d, num_read:%d\n", num_bytes, num_read);
 		return 0;
 	}
 }
@@ -202,8 +206,8 @@ int smbus_write64(Aardvark handle, u8 slv_addr, u8 cmd_code, u64 u64_data, bool 
 	return 0;
 }
 
-int smbus_block_write(Aardvark handle, u8 slv_addr, u8 cmd_code, u8 byte_cnt,
-                      const void *buf, u8 pec_flag)
+int smbus_block_write(Aardvark handle, u8 slv_addr, u8 cmd_code, u8 byte_cnt, const void *buf,
+                      u8 pec_flag)
 {
 	int ret, status;
 	u16 num_bytes, num_written;
@@ -558,7 +562,8 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 
 			// Dump the data to the screen
 			smbus_trace(INFO, "transaction #%d (%d)\n", trans_num, num_read);
-			print_buf(data, num_read, "data read from smbus:\n");
+			// print_buf(data, num_read, "data read from smbus:");
+			dump_packet(data, num_read, "data read from smbus:");
 
 			if (pec_flag) {
 				u8 pec = crc8(data, num_read);
@@ -573,7 +578,7 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 				status = fn(data, num_read + 1);
 				if (status)
 					smbus_trace(WARN, "fn (%d)\n", status);
-				break;
+				// break;
 			}
 			++trans_num;
 

@@ -113,11 +113,13 @@ union mctp_resp_data_set_eid {
 	u8 data[3];
 } __attribute__((packed));
 
-struct mctp_message_manager {
+struct mctp_message_context {
 	// union mctp_ctrl_msg_header ctrl_msg_head;
 	byte inst_id;
 };
 
+void mctp_message_increase_inst_id(void);
+u16 mctp_message_append_mic(void *msg, u16 msg_size);
 int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
                          u8 eid, bool ic, bool retry);
 int mctp_message_handle(const union mctp_message *msg, word size);

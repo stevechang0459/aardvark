@@ -11,6 +11,10 @@
 #include "mctp_transport.h"
 #include "mctp_message.h"
 
+#include "nvme_cmd.h"
+#include "nvme/nvme.h"
+#include "libnvme_types.h"
+
 #include "types.h"
 #include <stdbool.h>
 
@@ -639,6 +643,43 @@ int main(int argc, char *argv[])
 		}
 
 		ret = smbus_slave_poll(handle, 100, pec, mctp_receive_packet_handle);
+		if (ret) {
+			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
+			goto out;
+		}
+
+		ret = nvme_get_log_smart(slv_addr, tar_eid, 0, NVME_NSID_ALL, true, true);
+		if (ret) {
+			main_trace(ERROR, "nvme_get_log_smart (%d)\n", ret);
+			goto out;
+		}
+
+		ret = smbus_slave_poll(handle, 1000, pec, mctp_receive_packet_handle);
+		if (ret) {
+			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
+			goto out;
+		}
+
+		ret = nvme_identify_ctrl(slv_addr, tar_eid, 0, true, true);
+		if (ret) {
+			main_trace(ERROR, "nvme_identify_ctrl (%d)\n", ret);
+			goto out;
+		}
+
+		ret = smbus_slave_poll(handle, 2000, pec, mctp_receive_packet_handle);
+		if (ret) {
+			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
+			goto out;
+		}
+
+		ret = nvme_get_features_power_mgmt(slv_addr, tar_eid, 0, NVME_GET_FEATURES_SEL_CURRENT,
+		                                   true, true);
+		if (ret) {
+			main_trace(ERROR, "nvme_get_features_power_mgmt (%d)\n", ret);
+			goto out;
+		}
+
+		ret = smbus_slave_poll(handle, 1000, pec, mctp_receive_packet_handle);
 		if (ret) {
 			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
 			goto out;

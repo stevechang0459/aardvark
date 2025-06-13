@@ -50,6 +50,7 @@ bool mctp_transport_som_received(void);
 bool mctp_transport_eom_received(void);
 int mctp_transport_verify_mic(const union mctp_message *msg);
 void mctp_transport_drop_message(u8 clear_flags);
+void mctp_transport_show_message(void *msg);
 int mctp_transport_assemble_message(union mctp_message *msg,
                                     const union mctp_smbus_packet *pkt);
 int mctp_transport_send_message(u8 slave_addr, u8 dst_eid, const void *msg,

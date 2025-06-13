@@ -42,6 +42,8 @@ int mctp_receive_packet_handle(const void *buf, u32 len)
 	else
 		msg = g_mctp_req_msg;
 
+	mctp_trace(INFO, "[%d] req: %p, resp: %p\n", mctp_transport_req_sent(), g_mctp_req_msg, g_mctp_resp_msg);
+
 	ret = mctp_transport_assemble_message(msg, pkt);
 	if (ret) {
 		mctp_transport_drop_message(1);
@@ -62,9 +64,8 @@ int mctp_receive_packet_handle(const void *buf, u32 len)
 			if (unlikely(ret != MCTP_SUCCESS)) {
 				mctp_trace(ERROR, "bad mic\n");
 				return ret;
-			} else {
+			} else
 				mctp_trace(INFO, "good mic\n");
-			}
 		}
 
 		u16 msg_size = mctp_transport_get_message_size(msg);

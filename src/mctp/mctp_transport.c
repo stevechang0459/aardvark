@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "types.h"
 
@@ -12,7 +13,7 @@
 #include "utility.h"
 #include "crc32.h"
 
-static struct mctp_transport_manager m_mctp_tran_mgr;
+static struct mctp_transport_manager mctp_tran_ctx;
 static u8 *m_mctp_addr_map;
 
 u8 mctp_transport_search_addr(u8 eid)
@@ -36,20 +37,20 @@ int mctp_transport_transmit_packet(u8 slv_addr, union mctp_smbus_packet *pkt,
 	int ret;
 
 	// pkt->tran_head = tran_head.value;
-	pkt->tran_head.pkt_seq = m_mctp_tran_mgr.pkt_seq;
+	pkt->tran_head.pkt_seq = mctp_tran_ctx.pkt_seq;
 	if (!retry) {
-		++m_mctp_tran_mgr.pkt_seq;
+		++mctp_tran_ctx.pkt_seq;
 	}
 
-	if (!m_mctp_tran_mgr.flag.som) {
-		m_mctp_tran_mgr.flag.som = 1;
+	if (!mctp_tran_ctx.flag.som) {
+		mctp_tran_ctx.flag.som = 1;
 		pkt->tran_head.som = 1;
 	} else {
 		pkt->tran_head.som = 0;
 	}
 
 	if (eom) {
-		m_mctp_tran_mgr.flag.eom = 1;
+		mctp_tran_ctx.flag.eom = 1;
 		pkt->tran_head.eom = 1;
 	} else {
 		pkt->tran_head.eom = 0;
@@ -57,12 +58,12 @@ int mctp_transport_transmit_packet(u8 slv_addr, union mctp_smbus_packet *pkt,
 
 	memcpy(pkt->payload, payload, tran_size);
 
-	m_mctp_tran_mgr.flag.pkt_tmr_en = 1;
+	mctp_tran_ctx.flag.pkt_tmr_en = 1;
 	// TBD
 	// timer = xxx
 
 	tran_size += sizeof(pkt->tran_head);
-	print_buf(&pkt->tran_head, tran_size, "[%s]: pkt (%d)", __func__, tran_size);
+	print_buf(&pkt->tran_head, tran_size, "[%s] mctp pkt: %d", __func__, tran_size);
 
 	ret = mctp_smbus_transmit_packet(slv_addr, pkt, tran_size);
 	if (ret)
@@ -93,15 +94,15 @@ int mctp_transport_send_message(u8 slv_addr, u8 dst_eid, const void *msg,
 		 * each of the messages has a unique message tag.
 		 */
 		pkt->tran_head.msg_tag = msg_tag;
-		m_mctp_tran_mgr.req_sent = 1;
+		mctp_tran_ctx.req_sent = 1;
 	} else {
 		// Copy tran_head info from last transaction.
-		pkt->tran_head.value = m_mctp_tran_mgr.tran_head.value;
-		pkt->tran_head.dst_eid = m_mctp_tran_mgr.tran_head.src_eid;
+		pkt->tran_head.value = mctp_tran_ctx.tran_head.value;
+		pkt->tran_head.dst_eid = mctp_tran_ctx.tran_head.src_eid;
 		// pkt->tran_head.msg_tag = msg_tag;
-		m_mctp_tran_mgr.req_sent = 0;
+		mctp_tran_ctx.req_sent = 0;
 	}
-	pkt->tran_head.src_eid = m_mctp_tran_mgr.owner_eid;
+	pkt->tran_head.src_eid = mctp_tran_ctx.owner_eid;
 	pkt->tran_head.tag_owner = tag_owner;
 
 	if (dst_eid)
@@ -109,12 +110,9 @@ int mctp_transport_send_message(u8 slv_addr, u8 dst_eid, const void *msg,
 
 	u8 retry = 0;
 	while (msg_size) {
-		u8 tran_size = msg_size > m_mctp_tran_mgr.nego_size
-		               ? m_mctp_tran_mgr.nego_size
-		               : msg_size;
-
+		u8 tran_size = msg_size > mctp_tran_ctx.nego_size ? mctp_tran_ctx.nego_size : msg_size;
 		ret = mctp_transport_transmit_packet(slv_addr, pkt, msg, tran_size, retry,
-		                                     msg_size <= m_mctp_tran_mgr.nego_size);
+		                                     msg_size <= mctp_tran_ctx.nego_size);
 		if (ret) {
 			mctp_trace(ERROR, "mctp_transport_transmit_packet (%d)\n", ret);
 			break;
@@ -133,25 +131,23 @@ int mctp_transport_send_message(u8 slv_addr, u8 dst_eid, const void *msg,
 
 u16 mctp_transport_get_message_size(const union mctp_message *msg)
 {
-	if (!m_mctp_tran_mgr.flag.eom) {
+	if (!mctp_tran_ctx.flag.eom)
 		return 0;
-	}
 
-	if (m_mctp_tran_mgr.msg_size > 4 && msg->msg_head.ic) {
-		return m_mctp_tran_mgr.msg_size - 4;
-	}
+	if (mctp_tran_ctx.msg_size > 4 && msg->msg_head.ic)
+		return mctp_tran_ctx.msg_size - 4;
 
-	return m_mctp_tran_mgr.msg_size;
+	return mctp_tran_ctx.msg_size;
 }
 
 void mctp_transport_clear_state(u32 val)
 {
-	m_mctp_tran_mgr.flag.value &= ~val;
+	mctp_tran_ctx.flag.value &= ~val;
 }
 
 bool mctp_transport_req_sent(void)
 {
-	return m_mctp_tran_mgr.req_sent;
+	return mctp_tran_ctx.req_sent;
 }
 
 bool mctp_transport_ic_set(const union mctp_message *msg)
@@ -161,57 +157,54 @@ bool mctp_transport_ic_set(const union mctp_message *msg)
 
 bool mctp_transport_som_received(void)
 {
-	return m_mctp_tran_mgr.flag.som;
+	return mctp_tran_ctx.flag.som;
 }
 
 bool mctp_transport_eom_received(void)
 {
-	return m_mctp_tran_mgr.flag.eom;
+	if (mctp_tran_ctx.flag.eom) {
+		mctp_tran_ctx.req_sent = 0;
+		return true;
+	}
+	return false;
 }
 
 int mctp_transport_verify_mic(const union mctp_message *msg)
 {
-	const u8 *mic = msg->data + m_mctp_tran_mgr.msg_size - 4;
-	u32 crc1 = ((u32)mic[0])
-	           + ((u32)mic[1] << 8)
-	           + ((u32)mic[2] << 16)
-	           + ((u32)mic[3] << 24);
-
-	u32 crc2 = ~crc32_le_generic(CRC_INIT, msg, m_mctp_tran_mgr.msg_size - 4,
-	                             REVERSED_POLY_CRC32);
-
+	print_buf(msg, mctp_tran_ctx.msg_size, "mctp msg (%d)", mctp_tran_ctx.msg_size);
+	const u8 *mic = msg->data + mctp_tran_ctx.msg_size - 4;
+	u32 crc1 = ((u32)mic[0]) + ((u32)mic[1] << 8) + ((u32)mic[2] << 16) + ((u32)mic[3] << 24);
+	u32 crc2 = ~crc32_le_generic(CRC_INIT, msg, mctp_tran_ctx.msg_size - 4, REVERSED_POLY_CRC32);
 	// if (crc1 != crc2)
 	{
 		mctp_trace(INFO, "mic (%x,%x)\n", crc1, crc2);
 	}
 
-	return crc1 == crc2
-	       ? MCTP_SUCCESS
-	       : -MCTP_TRAN_ERR_DATA_INTEGRITY;
+	return crc1 == crc2 ? MCTP_SUCCESS : -MCTP_TRAN_ERR_DATA_INTEGRITY;
 }
 
 void mctp_transport_drop_message(u8 clear_flags)
 {
-	m_mctp_tran_mgr.msg_size = 0;
+	mctp_tran_ctx.msg_size = 0;
 	if (clear_flags)
-		m_mctp_tran_mgr.flag.value = 0;
+		mctp_tran_ctx.flag.value = 0;
 }
 
-int mctp_transport_assemble_message(
-        union mctp_message *msg,
-        const union mctp_smbus_packet *pkt)
+int mctp_transport_assemble_message(union mctp_message *msg, const union mctp_smbus_packet *pkt)
 {
-	u16 size = m_mctp_tran_mgr.msg_size;
-	u16 plen = m_mctp_tran_mgr.plen;
+	u16 size = mctp_tran_ctx.msg_size;
+	u16 plen = mctp_tran_ctx.plen;
 
-	if ((size + plen) > m_mctp_tran_mgr.max_msg_size) {
-		mctp_trace(ERROR, "wrong message size (%d,%d,%d)\n",
-		           size, plen, m_mctp_tran_mgr.max_msg_size);
+	if ((size + plen) > mctp_tran_ctx.max_msg_size) {
+		mctp_trace(ERROR, "wrong message size (%d,%d,%d)\n", size, plen,
+		           mctp_tran_ctx.max_msg_size);
 		return -MCTP_TRAN_ERR_UNSUP_MSG_SIZE;
 	}
+	mctp_trace(INFO, "assemble: %p,%d,%d\n", msg, size, plen);
 
 	memcpy(msg->data + size, pkt->payload, plen);
-	m_mctp_tran_mgr.msg_size = size + plen;
+	mctp_tran_ctx.msg_size = size + plen;
+	// print_buf(msg, mctp_tran_ctx.msg_size, "assemble msg (%d)", mctp_tran_ctx.msg_size);
 
 	return MCTP_SUCCESS;
 }
@@ -240,27 +233,26 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 	 * with devices that have not been assigned an EID.
 	 */
 	if ((tran_head->dst_eid != EID_NULL_DST)
-	    && (tran_head->dst_eid != m_mctp_tran_mgr.owner_eid)) {
+	    && (tran_head->dst_eid != mctp_tran_ctx.owner_eid)) {
 		mctp_trace(ERROR, "unknown destination EID (%d,%d)\n",
-		           tran_head->dst_eid, m_mctp_tran_mgr.owner_eid);
+		           tran_head->dst_eid, mctp_tran_ctx.owner_eid);
 		return -MCTP_TRAN_ERR_UNKNO_DST_EID;
 	}
 
-	u16 plen = pkt->medi_head.byte_cnt
-	           - sizeof(pkt->medi_head.src_slv_addr)
-	           - sizeof(pkt->tran_head);
+	u16 plen = pkt->medi_head.byte_cnt - sizeof(pkt->medi_head.src_slv_addr) -
+	           sizeof(pkt->tran_head);
 
 	/**
 	 * Unsupported transmission unit: The transmission unit size is not
 	 * supported by the endpoint that is receiving the packet.
 	 */
-	if (plen > m_mctp_tran_mgr.nego_size) {
+	if (plen > mctp_tran_ctx.nego_size) {
 		mctp_trace(ERROR, "unsupported transmission unit (%d,%d)\n",
-		           plen, m_mctp_tran_mgr.nego_size);
+		           plen, mctp_tran_ctx.nego_size);
 
 		return -MCTP_TRAN_ERR_UNSUP_TRAN_UNIT;
 	}
-
+	mctp_trace(INFO, "packet seq: %d,%d\n", tran_head->pkt_seq, mctp_tran_ctx.tran_head.pkt_seq);
 	// If this packet is the first packet of a message.
 	if (tran_head->som) {
 		/**
@@ -270,20 +262,21 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 		 * assembly in process to be terminated. All data for the message
 		 * assembly that was in progress is dropped.
 		 */
-		if (m_mctp_tran_mgr.flag.som) {
+		if (mctp_tran_ctx.flag.som) {
 			mctp_trace(WARN, "receipt of a new start packet\n");
 			/**
 			 * The newly received start packet is not dropped, but instead it
 			 * begins a new message assembly.
 			 */
 		}
+		mctp_trace(INFO, "mctp message tag: %d\n", tran_head->msg_tag);
 
 		mctp_transport_drop_message(0);
 
-		m_mctp_tran_mgr.plen = plen;
-		m_mctp_tran_mgr.flag.som = 1;
-		m_mctp_tran_mgr.flag.eom = 0;
-		m_mctp_tran_mgr.tran_head.value = tran_head->value;
+		mctp_tran_ctx.plen = plen;
+		mctp_tran_ctx.flag.som = 1;
+		mctp_tran_ctx.flag.eom = 0;
+		mctp_tran_ctx.tran_head.value = tran_head->value;
 	} else {
 		/**
 		 * Unexpected "middle" packet: A "middle" packet (SOM flag = 0 and EOM
@@ -293,7 +286,7 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 		 * the "start" packet has SOM flag = 1 and EOM flag = 0) for the
 		 * message.
 		 */
-		if (!m_mctp_tran_mgr.flag.som) {
+		if (!mctp_tran_ctx.flag.som) {
 			mctp_trace(ERROR, "unexpected middle packet\n");
 			return -MCTP_TRAN_ERR_UNEXP_MID_PKT;
 		}
@@ -302,15 +295,16 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 		 * Out-of-sequence packet sequence number: For packets comprising a
 		 * given multiple-packet message, the packet sequence number for the
 		 * most recently received packet is not a mod 4 increment of the
-		 * previously received packet’s sequence number. All data for the
+		 * previously received packet's sequence number. All data for the
 		 * message assembly that was in progress is dropped. This is considered
 		 * an error condition.
 		 */
-		if (tran_head->pkt_seq != (m_mctp_tran_mgr.tran_head.pkt_seq + 1) % 4) {
-			mctp_trace(ERROR, "out-of-sequence packet sequence number (%d,%d)\n",
-			           tran_head->pkt_seq, m_mctp_tran_mgr.tran_head.pkt_seq);
+		if (tran_head->pkt_seq != (mctp_tran_ctx.tran_head.pkt_seq + 1) % 4) {
+			mctp_trace(ERROR, "out-of-sequence packet sequence number (%d, %d)\n",
+			           tran_head->pkt_seq, mctp_tran_ctx.tran_head.pkt_seq);
 			return -MCTP_TRAN_ERR_OOS_PKT_SEQ;
 		}
+		mctp_tran_ctx.tran_head.pkt_seq = tran_head->pkt_seq;
 	}
 
 	/**
@@ -322,10 +316,10 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 	 * to the bridge’s physical address if null-source or destination-EID
 	 * physical addressing is used.)
 	 */
-	if ((!tran_head->tag_owner && !m_mctp_tran_mgr.req_sent)
-	    || (tran_head->tag_owner && m_mctp_tran_mgr.req_sent)) {
+	if ((!tran_head->tag_owner && !mctp_tran_ctx.req_sent) ||
+	    (tran_head->tag_owner && mctp_tran_ctx.req_sent)) {
 		mctp_trace(ERROR, "bad, unexpected, or expired message tag (%d,%d)\n",
-		           tran_head->tag_owner, m_mctp_tran_mgr.req_sent);
+		           tran_head->tag_owner, mctp_tran_ctx.req_sent);
 		return -MCTP_TRAN_ERR_BAD_MSG_TAG;
 	}
 
@@ -334,30 +328,30 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 	 * (TO) and Message Tag bits remain the same for all packets from the
 	 * SOM through the EOM.
 	 */
-	if (!tran_head->som || m_mctp_tran_mgr.req_sent) {
-		if ((tran_head->tag_owner != m_mctp_tran_mgr.tran_head.tag_owner)
-		    || (tran_head->msg_tag != m_mctp_tran_mgr.tran_head.msg_tag)) {
+	if (!tran_head->som || mctp_tran_ctx.req_sent) {
+		if ((tran_head->tag_owner != mctp_tran_ctx.tran_head.tag_owner) ||
+		    (tran_head->msg_tag   != mctp_tran_ctx.tran_head.msg_tag)) {
 			mctp_trace(ERROR, "inconsistent message tag (%d,%d)(%d,%d)\n",
 			           tran_head->tag_owner, tran_head->msg_tag,
-			           m_mctp_tran_mgr.tran_head.tag_owner,
-			           m_mctp_tran_mgr.tran_head.msg_tag);
+			           mctp_tran_ctx.tran_head.tag_owner,
+			           mctp_tran_ctx.tran_head.msg_tag);
 			return -MCTP_TRAN_ERR_BAD_MSG_TAG2;
 		}
 	}
 
 	// If this packet is the last packet of a message
 	if (tran_head->eom) {
-		m_mctp_tran_mgr.plen = plen;
-		m_mctp_tran_mgr.req_sent = 0;
-		m_mctp_tran_mgr.flag.som = 0;
-		m_mctp_tran_mgr.flag.eom = 1;
-		m_mctp_tran_mgr.flag.pkt_tmr_en = 0;
+		mctp_tran_ctx.plen = plen;
+		// mctp_tran_ctx.req_sent = 0;  // move to mctp_transport_eom_received
+		mctp_tran_ctx.flag.som = 0;
+		mctp_tran_ctx.flag.eom = 1;
+		mctp_tran_ctx.flag.pkt_tmr_en = 0;
 		/**
 		 * Though the packet sequence number can be any value (0-3) if the SOM
 		 * bit is set, it is recommended that it is an increment modulo 4 from
 		 * the prior packet with an EOM bit set.
 		 */
-		m_mctp_tran_mgr.pkt_seq = tran_head->pkt_seq + 1;
+		mctp_tran_ctx.pkt_seq = tran_head->pkt_seq + 1;
 	} else {
 		/**
 		 * Incorrect transmission unit: An implementation may terminate message
@@ -366,9 +360,9 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 		 * payload size for the start packet (SOM = 1b and EOM bit = 0b). This
 		 * is considered an error condition.
 		 */
-		if (plen != m_mctp_tran_mgr.plen) {
+		if (plen != mctp_tran_ctx.plen) {
 			mctp_trace(ERROR, "incorrect transmission unit (%d,%d)\n",
-			           plen, m_mctp_tran_mgr.plen);
+			           plen, mctp_tran_ctx.plen);
 			return -MCTP_TRAN_ERR_INCORRECT_TRAN_UNIT;
 		}
 	}
@@ -378,7 +372,7 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 	 * detecting message timeout condition.
 	 */
 	if (tran_head->som && tran_head->tag_owner) {
-		m_mctp_tran_mgr.flag.pkt_tmr_en = 1;
+		mctp_tran_ctx.flag.pkt_tmr_en = 1;
 		// mctp_pkt_tmr_1ms = MCTP_SMBUS_MT4_MAX;
 	}
 
@@ -387,23 +381,25 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 
 int mctp_transport_init(u8 owner_eid, u8 tar_eid, u16 nego_size)
 {
+	srand(time(NULL)); // Seed the random number generator
+
 	mctp_trace(INIT, "%s\n", __func__);
-	memset(&m_mctp_tran_mgr, 0, sizeof(m_mctp_tran_mgr));
+	memset(&mctp_tran_ctx, 0, sizeof(mctp_tran_ctx));
 
 	m_mctp_addr_map = malloc(MCTP_ADDR_MAP_SIZE);
 	memset(m_mctp_addr_map, 0, MCTP_ADDR_MAP_SIZE);
 
-	m_mctp_tran_mgr.owner_eid = owner_eid;
-	m_mctp_tran_mgr.tar_eid = tar_eid;
+	mctp_tran_ctx.owner_eid = owner_eid;
+	mctp_tran_ctx.tar_eid = tar_eid;
 
-	m_mctp_tran_mgr.nego_size = nego_size;
-	m_mctp_tran_mgr.max_msg_size = MCTP_MSG_SIZE_MAX;
+	mctp_tran_ctx.nego_size = nego_size;
+	mctp_tran_ctx.max_msg_size = MCTP_MSG_SIZE_MAX;
 
-	mctp_trace(INIT, "owner = 0x%02x, eid = 0x%02x\n", m_mctp_tran_mgr.owner_eid,
-	           m_mctp_tran_mgr.tar_eid);
-	mctp_trace(INIT, "sizeof(m_mctp_tran_mgr) = %d\n", (u32)sizeof(m_mctp_tran_mgr));
-	mctp_trace(INIT, "negotiated transfer size = %d\n", m_mctp_tran_mgr.nego_size);
-	mctp_trace(INIT, "maximum message size = %d\n", m_mctp_tran_mgr.max_msg_size);
+	mctp_trace(INIT, "owner = 0x%02x, eid = 0x%02x\n", mctp_tran_ctx.owner_eid,
+	           mctp_tran_ctx.tar_eid);
+	mctp_trace(INIT, "sizeof(mctp_tran_ctx) = %d\n", (u32)sizeof(mctp_tran_ctx));
+	mctp_trace(INIT, "negotiated transfer size = %d\n", mctp_tran_ctx.nego_size);
+	mctp_trace(INIT, "maximum message size = %d\n", mctp_tran_ctx.max_msg_size);
 
 	return MCTP_SUCCESS;
 }

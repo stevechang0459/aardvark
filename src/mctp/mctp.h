@@ -30,13 +30,11 @@
  */
 #define MCTP_BASELINE_TRAN_UNIT_SIZE    (64)
 
-#define MCTP_TRACE_FILTER (0 \
-        | BITLSHIFT(1, ERROR) \
-        | BITLSHIFT(1, WARN) \
-        | BITLSHIFT(1, DEBUG) \
-        | BITLSHIFT(1, INFO) \
-        | BITLSHIFT(1, INIT) \
-        )
+#define MCTP_TRACE_FILTER (BITLSHIFT(1, ERROR) | \
+        BITLSHIFT(1, WARN) | \
+        BITLSHIFT(1, DEBUG) | \
+        BITLSHIFT(1, INFO) | \
+        BITLSHIFT(1, INIT))
 
 #if 1
 extern const char *mctp_trace_header[];
@@ -88,26 +86,18 @@ enum mctp_error_status {
 	MCTP_ERROR,
 	MCTP_SMBUS_ERR_UNSUP_TRAN_UNIT,
 	MCTP_SMBUS_ERR_INVLD_SUP,
-// Unexpected "middle" packet or "end" packet
-	MCTP_TRAN_ERR_UNEXP_MID_PKT,
-// Bad packet data integrity or other physical layer error
-	MCTP_TRAN_ERR_DATA_INTEGRITY,
-// Bad, unexpected, or expired message tag
-	MCTP_TRAN_ERR_BAD_MSG_TAG,
-// Unknown destination EID
-	MCTP_TRAN_ERR_UNKNO_DST_EID,
-// Un-routable EID
-	MCTP_TRAN_ERR_UNROU_EID,
-// Bad header version
-	MCTP_TRAN_ERR_BAD_HEADER,
-// Unsupported transmission unit
-	MCTP_TRAN_ERR_UNSUP_TRAN_UNIT,
+	MCTP_TRAN_ERR_UNEXP_MID_PKT,            // Unexpected "middle" packet or "end" packet
+	MCTP_TRAN_ERR_DATA_INTEGRITY,           // Bad packet data integrity or other physical layer error
+	MCTP_TRAN_ERR_BAD_MSG_TAG,              // Bad, unexpected, or expired message tag
+	MCTP_TRAN_ERR_UNKNO_DST_EID,            // Unknown destination EID
+	MCTP_TRAN_ERR_UNROU_EID,                // Un-routable EID
+	MCTP_TRAN_ERR_BAD_HEADER,               // Bad header version
+	MCTP_TRAN_ERR_UNSUP_TRAN_UNIT,          // Unsupported transmission unit
 	MCTP_TRAN_ERR_UNEXP_MID_PKT2,
 	MCTP_TRAN_ERR_BAD_MSG_TAG2,
-// Out-of-sequence packet sequence number
-	MCTP_TRAN_ERR_OOS_PKT_SEQ,
-// Incorrect transmission unit
-	MCTP_TRAN_ERR_INCORRECT_TRAN_UNIT,
+
+	MCTP_TRAN_ERR_OOS_PKT_SEQ,              // Out-of-sequence packet sequence number
+	MCTP_TRAN_ERR_INCORRECT_TRAN_UNIT,      // Incorrect transmission unit
 // ---
 	MCTP_TRAN_ERR_UNSUP_MSG_SIZE,
 	MCTP_TRAN_ERR_UNKNO_DST_ADDR,
@@ -124,6 +114,9 @@ enum set_eid_operation {
 	SET_DISC_FLAG,
 };
 
+#pragma pack(push)
+#pragma pack(1)
+
 union mctp_transport_header {
 	struct {
 		struct {
@@ -139,9 +132,9 @@ union mctp_transport_header {
 			u8 eom : 1;
 			u8 som : 1;
 		};
-	} __attribute__((packed));
+	};
 	u32 value;
-} __attribute__((packed));
+};
 
 union mctp_msg_header {
 	struct {
@@ -150,9 +143,9 @@ union mctp_msg_header {
 			u8 ic : 1;
 		};
 		u8 msg_type_spec[3];
-	} __attribute__((packed));
+	};
 	u32 value;
-} __attribute__((packed));
+};
 
 union mctp_ctrl_msg_header {
 	struct {
@@ -163,30 +156,30 @@ union mctp_ctrl_msg_header {
 		struct {
 			u8 inst_id : 5;
 			u8 rsvd : 1;
-			u8 d_bit : 1;
-			u8 rq_bit : 1;
+			u8 d_bit : 1;   // Datagram
+			u8 rq_bit : 1;  // Request
 		};
 		u8 cmd_code;
 		u8 cmpl_code;
-	} __attribute__((packed));
+	};
 	u32 value;
-} __attribute__((packed));
+};
 
 union mctp_message {
 	struct {
 		union mctp_msg_header msg_head;
 		u8 msg_data[MCTP_MSG_SIZE_MAX - sizeof(union mctp_msg_header)];
-	} __attribute__((packed));
+	};
 	u8 data[MCTP_MSG_SIZE_MAX];
-} __attribute__((packed));
+};
 
 union mctp_ctrl_message {
 	struct {
 		union mctp_ctrl_msg_header ctrl_msg_head;
 		u8 msg_data[MCTP_MSG_SIZE_MAX - sizeof(union mctp_ctrl_msg_header)];
-	} __attribute__((packed));
+	};
 	u8 data[MCTP_MSG_SIZE_MAX];
-} __attribute__((packed));
+};
 
 union mctp_req_msg_set_eid {
 	struct {
@@ -195,8 +188,10 @@ union mctp_req_msg_set_eid {
 			u8 rsvd : 6;
 		};
 		u8 eid;
-	} __attribute__((packed));
+	};
 	u8 data[2];
-} __attribute__((packed));
+};
+
+#pragma pack(pop)
 
 #endif // ~ MCTP_H

@@ -144,7 +144,7 @@ void print_buf(const void *buf, size_t len, const char *title, ...)
 		printf("\n");
 	}
 
-	printf("\n");
+	// printf("\n");
 }
 
 void reverse(void *in, u32 len)

@@ -13,6 +13,7 @@ INCLUDE = \
 	crc \
 	smbus \
 	utility \
+	nvme \
 
 SRCS = $(wildcard *.$(C_FILE_EXT))
 
