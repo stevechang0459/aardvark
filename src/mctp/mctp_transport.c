@@ -16,9 +16,10 @@
 static struct mctp_transport_manager mctp_tran_ctx;
 static u8 *m_mctp_addr_map;
 
-u8 mctp_transport_search_addr(u8 eid)
+u8 mctp_transport_search_addr(u8 eid, int verbose)
 {
-	mctp_trace(INFO, "eid:%x, addr:%x\n", eid,  m_mctp_addr_map[eid]);
+	if (verbose > 1)
+		mctp_trace(INFO, "eid:%x, addr:%x\n", eid,  m_mctp_addr_map[eid]);
 	return m_mctp_addr_map[eid];
 }
 
@@ -32,7 +33,7 @@ void mctp_transport_update_addr(u8 addr, u8 eid)
 
 int mctp_transport_transmit_packet(u8 slv_addr, union mctp_smbus_packet *pkt,
                                    const void *payload, u8 tran_size, u8 retry,
-                                   bool eom)
+                                   bool eom, int verbose)
 {
 	int ret;
 
@@ -63,17 +64,19 @@ int mctp_transport_transmit_packet(u8 slv_addr, union mctp_smbus_packet *pkt,
 	// timer = xxx
 
 	tran_size += sizeof(pkt->tran_head);
-	print_buf(&pkt->tran_head, tran_size, "[%s] mctp pkt: %d", __func__, tran_size);
 
-	ret = mctp_smbus_transmit_packet(slv_addr, pkt, tran_size);
+	if (verbose)
+		print_buf(&pkt->tran_head, tran_size, "[%s] mctp pkt: %d", __func__, tran_size);
+
+	ret = mctp_smbus_transmit_packet(slv_addr, pkt, tran_size, verbose);
 	if (ret)
 		mctp_trace(ERROR, "mctp_smbus_transmit_packet (%d)\n", ret);
 
 	return ret;
 }
 
-int mctp_transport_send_message(u8 slv_addr, u8 dst_eid, const void *msg,
-                                u16 msg_size, u8 msg_tag, u8 tag_owner)
+int mctp_transport_send_message(u8 slv_addr, u8 dst_eid, const void *msg, u16 msg_size,
+                                u8 msg_tag, u8 tag_owner, int verbose)
 {
 	int ret = -MCTP_ERROR;
 
@@ -106,13 +109,14 @@ int mctp_transport_send_message(u8 slv_addr, u8 dst_eid, const void *msg,
 	pkt->tran_head.tag_owner = tag_owner;
 
 	if (dst_eid)
-		slv_addr = mctp_transport_search_addr(dst_eid);
+		slv_addr = mctp_transport_search_addr(dst_eid, verbose);
 
 	u8 retry = 0;
 	while (msg_size) {
 		u8 tran_size = msg_size > mctp_tran_ctx.nego_size ? mctp_tran_ctx.nego_size : msg_size;
 		ret = mctp_transport_transmit_packet(slv_addr, pkt, msg, tran_size, retry,
-		                                     msg_size <= mctp_tran_ctx.nego_size);
+		                                     msg_size <= mctp_tran_ctx.nego_size,
+		                                     verbose);
 		if (ret) {
 			mctp_trace(ERROR, "mctp_transport_transmit_packet (%d)\n", ret);
 			break;
@@ -169,14 +173,15 @@ bool mctp_transport_eom_received(void)
 	return false;
 }
 
-int mctp_transport_verify_mic(const union mctp_message *msg)
+int mctp_transport_verify_mic(const union mctp_message *msg, int verbose)
 {
-	print_buf(msg, mctp_tran_ctx.msg_size, "mctp msg (%d)", mctp_tran_ctx.msg_size);
+	if (verbose)
+		print_buf(msg, mctp_tran_ctx.msg_size, "verify mic (%d)", mctp_tran_ctx.msg_size);
 	const u8 *mic = msg->data + mctp_tran_ctx.msg_size - 4;
 	u32 crc1 = ((u32)mic[0]) + ((u32)mic[1] << 8) + ((u32)mic[2] << 16) + ((u32)mic[3] << 24);
 	u32 crc2 = ~crc32_le_generic(CRC_INIT, msg, mctp_tran_ctx.msg_size - 4, REVERSED_POLY_CRC32);
 	// if (crc1 != crc2)
-	{
+	if (verbose) {
 		mctp_trace(INFO, "mic (%x,%x)\n", crc1, crc2);
 	}
 
@@ -190,7 +195,7 @@ void mctp_transport_drop_message(u8 clear_flags)
 		mctp_tran_ctx.flag.value = 0;
 }
 
-int mctp_transport_assemble_message(union mctp_message *msg, const union mctp_smbus_packet *pkt)
+int mctp_transport_assemble_message(union mctp_message *msg, const union mctp_smbus_packet *pkt, int verbose)
 {
 	u16 size = mctp_tran_ctx.msg_size;
 	u16 plen = mctp_tran_ctx.plen;
@@ -200,7 +205,9 @@ int mctp_transport_assemble_message(union mctp_message *msg, const union mctp_sm
 		           mctp_tran_ctx.max_msg_size);
 		return -MCTP_TRAN_ERR_UNSUP_MSG_SIZE;
 	}
-	mctp_trace(INFO, "assemble: %p,%d,%d\n", msg, size, plen);
+
+	if (verbose > 1)
+		mctp_trace(INFO, "assemble: %p,%d,%d\n", msg, size, plen);
 
 	memcpy(msg->data + size, pkt->payload, plen);
 	mctp_tran_ctx.msg_size = size + plen;
@@ -209,7 +216,7 @@ int mctp_transport_assemble_message(union mctp_message *msg, const union mctp_sm
 	return MCTP_SUCCESS;
 }
 
-int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
+int mctp_transport_check_packet(const union mctp_smbus_packet *pkt, int verbose)
 {
 	const union mctp_transport_header *tran_head = &pkt->tran_head;
 
@@ -252,7 +259,8 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 
 		return -MCTP_TRAN_ERR_UNSUP_TRAN_UNIT;
 	}
-	mctp_trace(INFO, "packet seq: %d,%d\n", tran_head->pkt_seq, mctp_tran_ctx.tran_head.pkt_seq);
+	if (verbose > 1)
+		mctp_trace(INFO, "packet seq: %d,%d\n", tran_head->pkt_seq, mctp_tran_ctx.tran_head.pkt_seq);
 	// If this packet is the first packet of a message.
 	if (tran_head->som) {
 		/**
@@ -269,7 +277,8 @@ int mctp_transport_check_packet(const union mctp_smbus_packet *pkt)
 			 * begins a new message assembly.
 			 */
 		}
-		mctp_trace(INFO, "mctp message tag: %d\n", tran_head->msg_tag);
+		if (verbose > 1)
+			mctp_trace(INFO, "mctp message tag: %d\n", tran_head->msg_tag);
 
 		mctp_transport_drop_message(0);
 

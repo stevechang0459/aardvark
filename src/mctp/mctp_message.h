@@ -121,8 +121,8 @@ struct mctp_message_context {
 void mctp_message_increase_inst_id(void);
 u16 mctp_message_append_mic(void *msg, u16 msg_size);
 int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
-                         u8 eid, bool ic, bool retry);
-int mctp_message_handle(const union mctp_message *msg, word size);
+                         u8 eid, bool ic, bool retry, int verbose);
+int mctp_message_handle(const union mctp_message *msg, word size, int verbose);
 void *mctp_message_alloc(void);
 void mctp_message_free(void);
 int mctp_message_init(void);

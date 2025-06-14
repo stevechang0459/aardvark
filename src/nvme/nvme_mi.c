@@ -2,6 +2,7 @@
 #include "nvme_mi.h"
 #include "mctp_transport.h"
 #include "mctp_message.h"
+#include "mctp_core.h"
 #include "crc32.h"
 #include "utility.h"
 #include "libnvme_types.h"
@@ -21,21 +22,18 @@ struct nvme_mi_context nvme_mi_ctx = {
 	.req_sent = 0
 };
 
-int nvme_mi_send_mi_command(uint8_t slv_addr, uint8_t dst_eid, uint8_t csi,
-                            union nvme_mi_msg *msg, bool ic)
+int nvme_mi_send_control_primitive()
 {
-	// msg->nmh.mt = MCTP_MSG_TYPE_NVME_MM;
-	// msg->nmh.ic = ic;
-	// msg->nmh.csi = csi;
-	// msg->nmh.rsvd1 = 0; // Reserved bits should be set to 0
-	// msg->nmh.nmimt = NMIMT_MI;
-	// msg->nmh.ror = 1; // Request or Response (ROR) set to 1 for request
+	// return mctp_transport_send_message(slv_addr, dst_eid, msg, msg_size, rand(), true);
 	return 0;
 }
 
-int nvme_mi_send_admin_command(uint8_t slv_addr, uint8_t dst_eid, bool csi, uint8_t opc, union nvme_mi_msg *msg,
-                               size_t req_size, bool ic)
+int nvme_mi_send_command_message(struct aa_args *args, uint8_t opc, enum nvme_mi_message_type nmimt,
+                                 union nvme_mi_msg *msg, size_t req_size)
 {
+	int ret;
+
+	// TBD
 	nvme_mi_ctx.opc = opc;
 	nvme_mi_ctx.req_sent = 1;
 
@@ -43,28 +41,54 @@ int nvme_mi_send_admin_command(uint8_t slv_addr, uint8_t dst_eid, bool csi, uint
 	uint16_t msg_size = sizeof(msg->nmh) + req_size;
 
 	msg->nmh.mt    = MCTP_MSG_TYPE_NVME_MM;
-	msg->nmh.ic    = ic;
+	msg->nmh.ic    = args->ic;
 
-	msg->nmh.csi   = csi;
+	msg->nmh.csi   = args->csi;
 	msg->nmh.rsvd1 = 0;
-	msg->nmh.nmimt = NMIMT_ADMIN;
+	msg->nmh.nmimt = nmimt;
 	msg->nmh.ror   = ROR_REQ;
 	msg->nmh.meb   = 0;
 	msg->nmh.ciap  = 0;
 	msg->nmh.rsvd2 = 0;
 
-	print_buf(msg, msg_size, "[%s] msg: %d", __func__, msg_size);
-
-	if (ic)
+	if (args->ic)
 		msg_size = mctp_message_append_mic(msg, msg_size);
 
-	print_buf(msg, msg_size, "[%s] msg + mic: %d", __func__, msg_size);
-	nvme_trace(DEBUG, "crc: %x\n", ~crc32_le_generic(CRC_INIT, msg, msg_size - 4, REVERSED_POLY_CRC32));
+	if (args->verbose) {
+		print_buf(msg, msg_size, "[%s] nvme mi command message: %d", __func__, msg_size);
+		nvme_trace(DEBUG, "crc: %x\n", ~crc32_le_generic(CRC_INIT, msg, msg_size - 4,
+		                                                 REVERSED_POLY_CRC32));
+	}
 
-	return mctp_transport_send_message(slv_addr, dst_eid, msg, msg_size, rand(), true);
+	ret =  mctp_transport_send_message(args->slv_addr, args->dst_eid, msg, msg_size,
+	                                   rand(), true, args->verbose);
+	if (ret) {
+		nvme_trace(ERROR, "mctp_transport_send_message (%d)\n", ret);
+		return ret;
+	}
+
+	int timeout = args->timeout == -2 ? 1000 : args->timeout;
+	ret = smbus_slave_poll(args->handle, timeout, args->pec, mctp_receive_packet_handle,
+	                       args->verbose);
+	if (ret)
+		nvme_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
+
+	return ret;
 }
 
-int nvme_mi_request_message_handle()
+int nvme_mi_send_mi_command(struct aa_args *args, uint8_t opc, union nvme_mi_msg *msg,
+                            size_t req_size)
+{
+	return nvme_mi_send_command_message(args, opc, NVME_MI_MT_MI, msg, req_size);
+}
+
+int nvme_mi_send_admin_command(struct aa_args *args, uint8_t opc, union nvme_mi_msg *msg,
+                               size_t req_size)
+{
+	return nvme_mi_send_command_message(args, opc, NVME_MI_MT_ADMIN, msg, req_size);
+}
+
+int nvme_mi_request_message_handle(const union nvme_mi_res_msg *msg, uint16_t size)
 {
 	return 0;
 }
@@ -102,6 +126,12 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 		"PCIe Command"
 	};
 	printf("NVMe-MI Message Type        : %d (%s)\n", res_mag->nmh.nmimt, nmimt[res_mag->nmh.nmimt]);
+	const char *opc [256] = {
+		[nvme_admin_get_log_page] = "Get Log Page",
+		[nvme_admin_identify] = "Identify",
+		[nvme_admin_get_features] = "Get Features",
+	};
+	printf("Opcode                      : %02Xh (%s)\n", nvme_mi_ctx.opc, opc[nvme_mi_ctx.opc]);
 	const char *ror[ROR_MAX] = {
 		"Request",
 		"Response"

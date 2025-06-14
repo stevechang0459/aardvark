@@ -372,8 +372,8 @@ struct nvme_mi_adm_res_dw {
 
 #pragma pack(pop)
 
-int nvme_mi_send_admin_command(uint8_t slv_addr, uint8_t dst_eid, bool csi, uint8_t opc, union nvme_mi_msg *msg,
-                               size_t req_size, bool ic);
+int nvme_mi_send_admin_command(struct aa_args *args, uint8_t opc, union nvme_mi_msg *msg,
+                               size_t req_size);
 int nvme_mi_message_handle(const union nvme_mi_msg *msg, uint16_t size);
 
 #endif // NVME_MI_H

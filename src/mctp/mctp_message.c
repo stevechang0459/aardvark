@@ -31,7 +31,7 @@ u16 mctp_message_append_mic(void *msg, u16 msg_size)
 
 int mctp_send_control_request_message(u8 slv_addr, u8 dst_eid, enum mctp_ctrl_cmd_code cmd_code,
                                       union mctp_ctrl_message *msg, size_t req_size,
-                                      bool ic, bool retry)
+                                      bool ic, bool retry, int verbose)
 {
 	memset(msg, 0, sizeof(msg->ctrl_msg_head));
 	u16 msg_size = sizeof(msg->ctrl_msg_head) + req_size;
@@ -50,18 +50,19 @@ int mctp_send_control_request_message(u8 slv_addr, u8 dst_eid, enum mctp_ctrl_cm
 
 	// mctp_msg_ctx.ctrl_msg_head.value = msg->ctrl_msg_head.value;
 
-	print_buf(msg, msg_size, "[%s]: msg (%d)", __func__, msg_size);
 	if (ic)
 		msg_size = mctp_message_append_mic(msg, msg_size);
 
-	print_buf(msg, msg_size, "[%s]: add mic (%d)", __func__, msg_size);
-	mctp_trace(DEBUG, "crc: %x\n", ~crc32_le_generic(CRC_INIT, msg, msg_size - 4, REVERSED_POLY_CRC32));
+	if (verbose) {
+		print_buf(msg, msg_size, "[%s]: mctp control request message (%d)", __func__, msg_size);
+		mctp_trace(DEBUG, "crc: %x\n", ~crc32_le_generic(CRC_INIT, msg, msg_size - 4, REVERSED_POLY_CRC32));
+	}
 
-	return mctp_transport_send_message(slv_addr, dst_eid, msg, msg_size, rand(), true);
+	return mctp_transport_send_message(slv_addr, dst_eid, msg, msg_size, rand(), true, verbose);
 }
 
 int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
-                         u8 eid, bool ic, bool retry)
+                         u8 eid, bool ic, bool retry, int verbose)
 {
 	int ret;
 	union mctp_ctrl_message *msg;
@@ -76,10 +77,11 @@ int mctp_message_set_eid(u8 slv_addr, u8 dst_eid, enum set_eid_operation oper,
 	req_data->oper = oper;
 	req_data->eid = eid;
 
-	print_buf(msg->msg_data, sizeof(*req_data), "[%s]: req data (%d)", __func__, sizeof(*req_data));
+	if (verbose)
+		print_buf(msg->msg_data, sizeof(*req_data), "[%s]: req data (%d)", __func__, sizeof(*req_data));
 
 	ret = mctp_send_control_request_message(slv_addr, dst_eid, MCTP_CTRL_MSG_SET_EID,
-	                                        msg, sizeof(*req_data), ic, retry);
+	                                        msg, sizeof(*req_data), ic, retry, verbose);
 	if (ret)
 		mctp_trace(ERROR, "mctp_send_control_request_message (%d)\n", ret);
 
@@ -153,11 +155,12 @@ static int mctp_control_message_handle(const union mctp_ctrl_message *msg, u16 s
 	}
 }
 
-int mctp_message_handle(const union mctp_message *msg, u16 size)
+int mctp_message_handle(const union mctp_message *msg, u16 size, int verbose)
 {
 	int ret = MCTP_SUCCESS;
 	u8 mt = msg->msg_head.mt;
-	mctp_trace(INFO, "message type: %d\n", mt);
+	if (verbose > 1)
+		mctp_trace(INFO, "message type: %d\n", mt);
 	switch (msg->msg_head.mt) {
 	case MCTP_MSG_TYPE_CTRL:
 		ret = mctp_control_message_handle((void *)msg, size);

@@ -19,7 +19,7 @@ const char *mctp_trace_header[TRACE_TYPE_MAX] =  {
 	"[mctp] init: ",
 };
 
-int mctp_receive_packet_handle(const void *buf, u32 len)
+int mctp_receive_packet_handle(const void *buf, u32 len, int verbose)
 {
 	int ret;
 	union mctp_message *msg;
@@ -31,7 +31,7 @@ int mctp_receive_packet_handle(const void *buf, u32 len)
 		return ret;
 	}
 
-	ret = mctp_transport_check_packet(pkt);
+	ret = mctp_transport_check_packet(pkt, verbose);
 	if (unlikely(ret != MCTP_SUCCESS)) {
 		mctp_trace(ERROR, "mctp_transport_check_packet (%d)\n", ret);
 		return ret;
@@ -42,9 +42,10 @@ int mctp_receive_packet_handle(const void *buf, u32 len)
 	else
 		msg = g_mctp_req_msg;
 
-	mctp_trace(INFO, "[%d] req: %p, resp: %p\n", mctp_transport_req_sent(), g_mctp_req_msg, g_mctp_resp_msg);
+	if (verbose > 1)
+		mctp_trace(INFO, "[%d] req: %p, resp: %p\n", mctp_transport_req_sent(), g_mctp_req_msg, g_mctp_resp_msg);
 
-	ret = mctp_transport_assemble_message(msg, pkt);
+	ret = mctp_transport_assemble_message(msg, pkt, verbose);
 	if (ret) {
 		mctp_transport_drop_message(1);
 		mctp_trace(ERROR, "mctp_transport_assemble_message (%d)\n", ret);
@@ -60,16 +61,16 @@ int mctp_receive_packet_handle(const void *buf, u32 len)
 			 * be terminated and the entire message to be dropped, unless it is
 			 * overridden by the specification for a particular message type.
 			 */
-			ret = mctp_transport_verify_mic(msg);
+			ret = mctp_transport_verify_mic(msg, verbose);
 			if (unlikely(ret != MCTP_SUCCESS)) {
 				mctp_trace(ERROR, "bad mic\n");
 				return ret;
-			} else
+			} else if (verbose)
 				mctp_trace(INFO, "good mic\n");
 		}
 
 		u16 msg_size = mctp_transport_get_message_size(msg);
-		ret = mctp_message_handle(msg, msg_size);
+		ret = mctp_message_handle(msg, msg_size, verbose);
 		if (ret) {
 			mctp_trace(ERROR, "mctp_message_handle (%d)\n", ret);
 			return ret;

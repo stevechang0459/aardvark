@@ -217,7 +217,7 @@ int smbus_write64(Aardvark handle, u8 slv_addr, u8 cmd_code, u64 data,
 int smbus_write_file(Aardvark handle, u8 slv_addr, u8 cmd_code,
                      const char *file_name, bool pec_flag);
 int smbus_block_write(Aardvark handle, u8 slave_addr, u8 cmd_code,
-                      u8 byte_cnt, const void *buf, u8 pec_flag);
+                      u8 byte_cnt, const void *buf, u8 pec_flag, int verbose);
 
 int smbus_arp_cmd_prepare_to_arp(Aardvark handle, bool pec_flag);
 int smbus_arp_cmd_reset_device(Aardvark handle, u8 slv_addr, u8 directed,
@@ -226,8 +226,9 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 slv_addr,
                            bool directed, bool pec_flag);
 int smbus_arp_cmd_assign_address(Aardvark handle, const union udid_ds *udid,
                                  u8 dev_tar_addr, bool pec_flag);
+typedef int (*slave_poll_callback)(const void *, u32, int);
 int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
-                     int (*callback)(const void *, u32));
+                     slave_poll_callback callback, int verbose);
 void print_udid(const union udid_ds *udid);
 
 #endif // ~ SMBUS_H

@@ -10,6 +10,8 @@
 #ifndef _MSC_VER
 /* C99-compliant compilers (GCC) */
 #include <stdint.h>
+#include <stdbool.h>
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -160,6 +162,18 @@ enum trace_type {
 	INIT,
 
 	TRACE_TYPE_MAX
+};
+
+struct aa_args {
+	int handle;
+	int verbose;
+	uint32_t nsid;
+	int timeout;
+	uint8_t slv_addr;
+	uint8_t dst_eid;
+	bool csi;
+	bool pec;
+	bool ic;
 };
 
 #endif  // TYPES_H

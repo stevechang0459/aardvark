@@ -231,7 +231,7 @@ void nvme_show_get_features(uint32_t cqedw0)
 	}
 }
 
-int nvme_get_log_smart(uint8_t slv_addr, uint8_t dst_eid, bool csi, uint32_t namespace_id, bool ic, bool verbose)
+int nvme_get_nsid_log(struct aa_args *args, uint32_t nsid, enum nvme_cmd_get_log_lid lid, bool rae)
 {
 	union nvme_mi_msg *msg = malloc(sizeof(*msg));
 	memset(msg, 0, sizeof(*msg));
@@ -240,24 +240,24 @@ int nvme_get_log_smart(uint8_t slv_addr, uint8_t dst_eid, bool csi, uint32_t nam
 	uint32_t numd = (sizeof(struct nvme_smart_log) >> 2) - 1;
 
 	req_data->opc                      = nvme_admin_get_log_page;
-	req_data->nsid                     = namespace_id;
-	req_data->get_log_page.cdw10.lid   = NVME_LOG_LID_SMART;
+	req_data->nsid                     = nsid;
+	req_data->get_log_page.cdw10.lid   = lid;
 	req_data->get_log_page.cdw10.lsp   = NVME_LOG_LSP_NONE;
-	req_data->get_log_page.cdw10.rae   = false;
+	req_data->get_log_page.cdw10.rae   = rae;
 	req_data->get_log_page.cdw10.numdl = numd & 0xffff;
 	req_data->get_log_page.cdw11.numdu = numd >> 16;
 	req_data->get_log_page.cdw11.lsi   = NVME_LOG_LSI_NONE;
 	req_data->get_log_page.cdw12.lpol  = 0;
 	req_data->get_log_page.cdw13.lpou  = 0;
-	req_data->get_log_page.cdw14.uuid  = 0;
+	req_data->get_log_page.cdw14.uuid  = NVME_UUID_NONE;
 
 	nvme_cmd_ctx.opc = req_data->opc;
 	nvme_cmd_ctx.lid = req_data->get_log_page.cdw10.lid;
 
-	if (verbose)
-		print_buf(req_data, sizeof(*req_data), "req_data");
+	// if (verbose)
+	//      print_buf(req_data, sizeof(*req_data), "req_data");
 
-	int ret = nvme_mi_send_admin_command(slv_addr, dst_eid, csi, req_data->opc, msg, sizeof(*req_data), ic);
+	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg, sizeof(*req_data));
 	if (ret < 0)
 		nvme_trace(ERROR, "nvme_mi_send_admin_command failed (%d)\n", ret);
 
@@ -266,15 +266,19 @@ int nvme_get_log_smart(uint8_t slv_addr, uint8_t dst_eid, bool csi, uint32_t nam
 	return ret;
 }
 
-int nvme_identify_cns_nsid(uint8_t slv_addr, uint8_t dst_eid, bool csi,
-                           uint32_t namespace_id, uint8_t cns, bool ic, bool verbose)
+int nvme_get_log_smart(struct aa_args *args, uint32_t nsid, bool rae)
+{
+	return nvme_get_nsid_log(args, nsid, NVME_LOG_LID_SMART, rae);
+}
+
+int nvme_identify_cns_nsid(struct aa_args *args, uint32_t nsid, uint8_t cns)
 {
 	union nvme_mi_msg *msg = malloc(sizeof(*msg));
 	memset(msg, 0, sizeof(*msg));
 	struct nvme_mi_adm_req_dw *req_data = (void *)msg->msg_data;
 
 	req_data->opc                       = nvme_admin_identify;
-	req_data->nsid                      = namespace_id;
+	req_data->nsid                      = nsid;
 	req_data->identify.cdw10.cns        = NVME_IDENTIFY_CNS_CTRL;
 	req_data->identify.cdw10.cntid      = NVME_CNTLID_NONE;
 	req_data->identify.cdw11.nvmsetid   = NVME_CNSSPECID_NONE;
@@ -282,10 +286,10 @@ int nvme_identify_cns_nsid(uint8_t slv_addr, uint8_t dst_eid, bool csi,
 
 	nvme_cmd_ctx.opc = req_data->opc;
 
-	if (verbose)
-		print_buf(req_data, sizeof(*req_data), "req_data");
+	// if (verbose)
+	//      print_buf(req_data, sizeof(*req_data), "req_data");
 
-	int ret = nvme_mi_send_admin_command(slv_addr, dst_eid, csi, req_data->opc, msg, sizeof(*req_data), ic);
+	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg, sizeof(*req_data));
 	if (ret < 0)
 		nvme_trace(ERROR, "nvme_mi_send_admin_command failed (%d)\n", ret);
 
@@ -294,13 +298,12 @@ int nvme_identify_cns_nsid(uint8_t slv_addr, uint8_t dst_eid, bool csi,
 	return ret;
 }
 
-int nvme_identify_ctrl(uint8_t slv_addr, uint8_t dst_eid, bool csi, bool ic, bool verbose)
+int nvme_identify_ctrl(struct aa_args *args)
 {
-	return nvme_identify_cns_nsid(slv_addr, dst_eid, csi, NVME_NSID_NONE, NVME_IDENTIFY_CNS_CTRL, ic, verbose);
+	return nvme_identify_cns_nsid(args, NVME_NSID_NONE, NVME_IDENTIFY_CNS_CTRL);
 }
 
-int nvme_get_features(uint8_t slv_addr, uint8_t dst_eid, bool csi, enum nvme_features_id fid,
-                      enum nvme_get_features_sel sel, bool ic, bool verbose)
+int nvme_get_features(struct aa_args *args, enum nvme_features_id fid, enum nvme_get_features_sel sel)
 {
 	union nvme_mi_msg *msg = malloc(sizeof(*msg));
 	memset(msg, 0, sizeof(*msg));
@@ -316,10 +319,10 @@ int nvme_get_features(uint8_t slv_addr, uint8_t dst_eid, bool csi, enum nvme_fea
 	nvme_cmd_ctx.fid = fid;
 	nvme_cmd_ctx.sel = sel;
 
-	if (verbose)
-		print_buf(req_data, sizeof(*req_data), "req_data");
+	// if (verbose)
+	//      print_buf(req_data, sizeof(*req_data), "req_data");
 
-	int ret = nvme_mi_send_admin_command(slv_addr, dst_eid, csi, req_data->opc, msg, sizeof(*req_data), ic);
+	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg, sizeof(*req_data));
 	if (ret < 0)
 		nvme_trace(ERROR, "nvme_mi_send_admin_command failed (%d)\n", ret);
 
@@ -328,8 +331,7 @@ int nvme_get_features(uint8_t slv_addr, uint8_t dst_eid, bool csi, enum nvme_fea
 	return ret;
 }
 
-int nvme_get_features_power_mgmt(uint8_t slv_addr, uint8_t dst_eid, bool csi, enum nvme_get_features_sel sel,
-                                 bool ic, bool verbose)
+int nvme_get_features_power_mgmt(struct aa_args *args, enum nvme_get_features_sel sel)
 {
-	return nvme_get_features(slv_addr, dst_eid, csi, NVME_FEAT_FID_POWER_MGMT, sel, ic, verbose);
+	return nvme_get_features(args, NVME_FEAT_FID_POWER_MGMT, sel);
 }

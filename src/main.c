@@ -204,14 +204,14 @@ int main(int argc, char *argv[])
 	char *end, *bit_rate_opt = NULL, *host_addr_opt = NULL;
 	int func_idx = FUNC_IDX_NULL;
 	int all_addr = 0, pec = 0,  power = 0, pull_up = 0, version = 0, manual = 0,
-	    directed = 0, i2c_slave_mode = 0, wrong_pec = 0;
+	    directed = 0, i2c_slave_mode = 0, wrong_pec = 0, verbose = 0;
 	int opt, port, real_bit_rate, bit_rate, slv_addr, cmd_code;
 	const char *file_name;
 
 	real_bit_rate = bit_rate = I2C_DEFAULT_BITRATE;
 
 	/* handle (optional) flags first */
-	while ((opt = getopt(argc, argv, "ab:cdhkps:uv")) != -1) {
+	while ((opt = getopt(argc, argv, "ab:cdhkps:uvV")) != -1) {
 		switch (opt) {
 		case 'a':
 			all_addr = 1;
@@ -240,6 +240,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'v':
 			version = 1;
+			break;
+		case 'V':
+			verbose = 1;
 			break;
 		case 'w':
 			wrong_pec = 1;
@@ -446,7 +449,7 @@ int main(int argc, char *argv[])
 
 		pec = !wrong_pec ? pec : 2;
 		int ret = smbus_block_write(handle, slv_addr, cmd_code, byte_cnt,
-		                            block, pec);
+		                            block, pec, verbose);
 		if (ret)
 			main_exit(EXIT_FAILURE, handle, -1, NULL);
 
@@ -636,53 +639,51 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 
-		ret = mctp_message_set_eid(slv_addr, EID_NULL_DST, SET_EID, tar_eid, 1, 0);
+		ret = mctp_message_set_eid(slv_addr, EID_NULL_DST, SET_EID, tar_eid, 1, 0, verbose);
 		if (ret) {
 			main_trace(ERROR, "mctp_message_set_eid (%d)\n", ret);
 			goto out;
 		}
 
-		ret = smbus_slave_poll(handle, 100, pec, mctp_receive_packet_handle);
+		ret = smbus_slave_poll(handle, 100, pec, mctp_receive_packet_handle, verbose);
 		if (ret) {
 			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
 			goto out;
 		}
 
-		ret = nvme_get_log_smart(slv_addr, tar_eid, 0, NVME_NSID_ALL, true, true);
-		if (ret) {
-			main_trace(ERROR, "nvme_get_log_smart (%d)\n", ret);
-			goto out;
-		}
+		struct aa_args args = {
+			.handle = handle,
+			.verbose = verbose,
+			.slv_addr = slv_addr,
+			.dst_eid = tar_eid,
+			.csi = 0,
+			.nsid = NVME_NSID_ALL,
+			.pec = pec,
+			.ic = true,
+			.timeout = -2,
+		};
 
-		ret = smbus_slave_poll(handle, 1000, pec, mctp_receive_packet_handle);
-		if (ret) {
-			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
-			goto out;
-		}
+		int count = 0;
+		while (1) {
+			ret = nvme_identify_ctrl(&args);
+			if (ret) {
+				main_trace(ERROR, "nvme_identify_ctrl (%d)\n", ret);
+				goto out;
+			}
 
-		ret = nvme_identify_ctrl(slv_addr, tar_eid, 0, true, true);
-		if (ret) {
-			main_trace(ERROR, "nvme_identify_ctrl (%d)\n", ret);
-			goto out;
-		}
+			ret = nvme_get_features_power_mgmt(&args, NVME_GET_FEATURES_SEL_CURRENT);
+			if (ret) {
+				main_trace(ERROR, "nvme_get_features_power_mgmt (%d)\n", ret);
+				goto out;
+			}
 
-		ret = smbus_slave_poll(handle, 2000, pec, mctp_receive_packet_handle);
-		if (ret) {
-			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
-			goto out;
-		}
-
-		ret = nvme_get_features_power_mgmt(slv_addr, tar_eid, 0, NVME_GET_FEATURES_SEL_CURRENT,
-		                                   true, true);
-		if (ret) {
-			main_trace(ERROR, "nvme_get_features_power_mgmt (%d)\n", ret);
-			goto out;
-		}
-
-		ret = smbus_slave_poll(handle, 1000, pec, mctp_receive_packet_handle);
-		if (ret) {
-			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
-			goto out;
+			ret = nvme_get_log_smart(&args, NVME_NSID_ALL, true);
+			if (ret) {
+				main_trace(ERROR, "nvme_get_log_smart (%d)\n", ret);
+				goto out;
+			}
+			printf("nvme_get_log_smart # %d\n", ++count);
+			sleep(10);
 		}
 
 		break;
