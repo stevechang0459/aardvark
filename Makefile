@@ -25,6 +25,7 @@ SUBDIR = \
 	src/smbus \
 	src/mctp \
 	src/nvme \
+	src/i2c \
 
 COMMON_INCLUDE = \
 	$(CURDIR)/include \
@@ -101,6 +102,7 @@ LIBS = \
 	checksum \
 	crc \
 	utility \
+	i2c \
 
 LDLIBS = $(foreach lib,$(LIBS),-l$(lib)) -lm # -lpthread	# <-- Do not change this order.
 

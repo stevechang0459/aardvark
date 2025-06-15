@@ -233,7 +233,7 @@ int smbus_block_write(Aardvark handle, u8 slv_addr, u8 cmd_code, u8 byte_cnt, co
 
 	aa_mutex_lock(aa_mutex);
 try:
-	status = aa_i2c_write_ext(handle, slv_addr, AA_I2C_NO_FLAGS, num_bytes, &data[1], &num_written);
+		status = aa_i2c_write_ext(handle, slv_addr, AA_I2C_NO_FLAGS, num_bytes, &data[1], &num_written);
 	if (status) {
 		smbus_trace(ERROR, "aa_i2c_write_ext:%d (%s)\n", status, aa_status_string(status));
 		ret = -SMBUS_CMD_WRITE_FAILED;

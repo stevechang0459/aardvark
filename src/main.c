@@ -17,6 +17,9 @@
 
 #include "global.h"
 #include "types.h"
+
+#include "i2c.h"
+
 #include <stdbool.h>
 
 #include <stdio.h>
@@ -50,6 +53,7 @@ const struct function_list func_list[] = {
 	{"smb-write-file",    FUNC_IDX_SMB_WRITE_FILE},
 	{"test-mctp",         FUNC_IDX_TEST_MCTP},
 	{"smb-slv-poll",      FUNC_IDX_SMB_DEVICE_POLL},
+	{"i2cdetect",         FUNC_IDX_I2C_DETECT},
 	// {"i2c-write-file",    FUNC_IDX_I2C_MASTER_WRITE_FILE},
 	// {"i2c-slave-poll",    FUNC_IDX_I2C_SLAVE_POLL},
 	// {"test-smb-ctrl-tar", FUNC_IDX_TEST},
@@ -762,6 +766,10 @@ int main(int argc, char *argv[])
 		if (ret && ret != 0xFF)
 			nvme_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
 
+		break;
+	}
+	case FUNC_IDX_I2C_DETECT: {
+		scan_i2c_bus(handle);
 		break;
 	}
 #if 0
