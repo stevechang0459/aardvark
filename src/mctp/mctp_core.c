@@ -72,7 +72,9 @@ int mctp_receive_packet_handle(const void *buf, u32 len, int verbose)
 		u16 msg_size = mctp_transport_get_message_size(msg);
 		ret = mctp_message_handle(msg, msg_size, verbose);
 		if (ret) {
-			mctp_trace(ERROR, "mctp_message_handle (%d)\n", ret);
+			if (ret != 0xFF)
+				mctp_trace(ERROR, "mctp_message_handle (%d)\n", ret);
+
 			return ret;
 		}
 	}

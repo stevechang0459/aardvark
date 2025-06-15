@@ -170,7 +170,7 @@ int mctp_message_handle(const union mctp_message *msg, u16 size, int verbose)
 
 	case MCTP_MSG_TYPE_NVME_MM:
 		ret = nvme_mi_message_handle((void *)msg, size);
-		if (ret)
+		if (ret && ret != 0xFF)
 			mctp_trace(ERROR, "nvme_mi_message_handle (%d)\n", ret);
 		break;
 	}

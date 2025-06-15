@@ -1,6 +1,7 @@
 #ifndef NVME_H
 #define NVME_H
 
+#include "global.h"
 #include "types.h"
 #include <stdint.h>
 #include <stdbool.h>
@@ -22,6 +23,13 @@ do { \
         fprintf(stderr, "%s", nvme_trace_header[type]); \
         fprintf(stderr, __VA_ARGS__);} \
 } while (0)
+
+
+#if (CONFIG_AA_MULTI_THREAD)
+void *nvme_transmit_worker1(void *args);
+void *nvme_transmit_worker2(void *args);
+void *nvme_receive_worker(void *args);
+#endif
 
 
 #endif // NVME_H

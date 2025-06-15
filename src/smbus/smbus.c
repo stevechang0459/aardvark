@@ -11,6 +11,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <pthread.h>
+#include <unistd.h>
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 const char *smbus_trace_header[TRACE_TYPE_MAX] =  {
 	"[SMBus] error: ",
@@ -211,6 +216,7 @@ int smbus_block_write(Aardvark handle, u8 slv_addr, u8 cmd_code, u8 byte_cnt, co
 {
 	int ret, status;
 	u16 num_bytes, num_written;
+	int count = 0;
 
 	data[0] = slv_addr << 1 | I2C_WRITE;
 	data[1] = cmd_code;
@@ -225,12 +231,21 @@ int smbus_block_write(Aardvark handle, u8 slv_addr, u8 cmd_code, u8 byte_cnt, co
 			data[num_bytes] = data[num_bytes] ^ 0xFF;
 	}
 
+	aa_mutex_lock(aa_mutex);
+try:
 	status = aa_i2c_write_ext(handle, slv_addr, AA_I2C_NO_FLAGS, num_bytes, &data[1], &num_written);
 	if (status) {
-		smbus_trace(ERROR, "aa_i2c_write_ext (%d)\n", status);
+		smbus_trace(ERROR, "aa_i2c_write_ext:%d (%s)\n", status, aa_status_string(status));
 		ret = -SMBUS_CMD_WRITE_FAILED;
+		aa_mutex_unlock(aa_mutex);
+		if (ret && ++count < 3) {
+			Sleep(100);
+			goto try;
+		}
+
 		goto dump;
 	}
+	aa_mutex_unlock(aa_mutex);
 
 	if (smbus_verify_byte_written(num_bytes, num_written)) {
 		smbus_trace(ERROR, "num written mismatch (%d,%d)\n", num_bytes, num_written);
@@ -537,7 +552,7 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 		smbus_trace(INFO, "polling smbus data...\n");
 
 	// Polling data from SMBus
-	status = aa_async_poll(handle, timeout_ms);
+	status = aa_async_poll(handle, timeout_ms * 10);
 	if (status == AA_ASYNC_NO_DATA) {
 		smbus_trace(INFO, "no data available\n");
 		ret = -SMBUS_SLV_NO_AVAILABLE_DATA;
@@ -585,7 +600,7 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 
 			if (callback) {
 				status = callback(data, num_read + 1, verbose);
-				if (status)
+				if (status && status != 0xFF)
 					smbus_trace(WARN, "callback (%d)\n", status);
 				// break;
 			}
@@ -603,7 +618,7 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 
 			if (verbose) {
 				// Print status information to the screen
-				smbus_trace(INFO, "transaction #%02d\n", trans_num);
+				smbus_trace(INFO, "transaction #%d (%d\n", trans_num, num_written);
 				smbus_trace(INFO, "number of bytes written to smbus master = %d\n",
 				            num_written);
 			}
@@ -620,6 +635,84 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 			smbus_trace(INFO, "no more data available from smbus\n");
 			break;
 		}
+	}
+
+	ret = SMBUS_SUCCESS;
+
+out:
+	return ret;
+}
+
+int smbus_slave_poll_2(Aardvark handle, int timeout_ms, bool pec_flag,
+                       slave_poll_callback callback, int verbose)
+{
+	int ret, status;
+
+	if (verbose)
+		smbus_trace(INFO, "polling smbus data...\n");
+
+	// Polling data from SMBus
+	status = aa_async_poll(handle, 0);
+	if (status == AA_ASYNC_NO_DATA) {
+		if (verbose)
+			smbus_trace(INFO, "no data available from smbus\n");
+	}
+
+	if (status == AA_ASYNC_I2C_READ) {
+		u16 num_read;
+		u8 slv_addr;
+
+		status = aa_i2c_slave_read_ext(handle, &slv_addr, SMBUS_BUF_MAX, &data[1], &num_read);
+		if (status) {
+			smbus_trace(ERROR, "aa_i2c_slave_read_ext (%d)\n", status);
+			ret = -SMBUS_SLV_READ_FAILED;
+			goto out;
+		}
+
+		data[0] = slv_addr << 1 | I2C_WRITE;
+		num_read = num_read + 1;
+
+		if (verbose) {
+			smbus_trace(INFO, "transaction (%d)\n", num_read);
+			// print_buf(data, num_read, "data read from smbus:");
+			dump_packet(data, num_read, "data read from smbus:");
+		}
+
+		if (pec_flag) {
+			u8 pec = crc8(data, num_read);
+			if (pec != 0) {
+				smbus_trace(ERROR, "pec error (%d)\n", pec);
+				ret = -SMBUS_PEC_ERR;
+				goto out;
+			}
+		}
+
+		if (callback) {
+			status = callback(data, num_read + 1, verbose);
+			if (status) {
+				if (status != 0xFF)
+					smbus_trace(WARN, "callback (%d)\n", status);
+
+				return status;
+			}
+		}
+	} else if (status == AA_ASYNC_I2C_WRITE) {
+		u16 num_written;
+		status = aa_i2c_slave_write_stats_ext(handle, &num_written);
+		if (status) {
+			smbus_trace(ERROR, "aa_i2c_slave_write_stats_ext failed (%d)\n", status);
+			ret = -SMBUS_SLV_WRITE_FAILED;
+			goto out;
+		}
+
+		if (verbose) {
+			smbus_trace(INFO, "transaction (%d)\n", num_written);
+			smbus_trace(INFO, "number of bytes written to smbus master = %d\n", num_written);
+		}
+	} else if (status == AA_ASYNC_SPI) {
+		smbus_trace(ERROR, "non-i2c asynchronous message is pending\n");
+		ret = -SMBUS_SLV_RECV_NON_I2C_DATA;
+		goto out;
 	}
 
 	ret = SMBUS_SUCCESS;
@@ -645,12 +738,12 @@ void print_udid(const union udid_ds *udid)
 	smbus_trace(INFO, "Vendor ID = %04x\n", udid->vendor_id);
 	smbus_trace(INFO, "Device ID = %04x\n", udid->device_id);
 
-	smbus_trace(INFO, "udid->interface.value = %x\n", udid->interface.value);
-	smbus_trace(INFO, "SMBus Version = %d\n", udid->interface.smbus_ver);
-	smbus_trace(INFO, "OEM = %d\n", udid->interface.oem);
-	smbus_trace(INFO, "ASF = %d\n", udid->interface.asf);
-	smbus_trace(INFO, "IPMI = %d\n", udid->interface.ipmi);
-	smbus_trace(INFO, "ZONE = %d\n", udid->interface.zone);
+	smbus_trace(INFO, "udid->uuid_if.value = %x\n", udid->uuid_if.value);
+	smbus_trace(INFO, "SMBus Version = %d\n", udid->uuid_if.smbus_ver);
+	smbus_trace(INFO, "OEM = %d\n", udid->uuid_if.oem);
+	smbus_trace(INFO, "ASF = %d\n", udid->uuid_if.asf);
+	smbus_trace(INFO, "IPMI = %d\n", udid->uuid_if.ipmi);
+	smbus_trace(INFO, "ZONE = %d\n", udid->uuid_if.zone);
 
 	smbus_trace(INFO, "Subsystem Vendor ID = %04x\n", udid->subsys_vendor_id);
 	smbus_trace(INFO, "Subsystem Device ID = %04x\n", udid->subsys_device_id);

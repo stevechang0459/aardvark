@@ -15,6 +15,7 @@
 #include "nvme/nvme.h"
 #include "libnvme_types.h"
 
+#include "global.h"
 #include "types.h"
 #include <stdbool.h>
 
@@ -25,6 +26,9 @@
 #include <stdarg.h>
 
 #include <errno.h>
+#if (CONFIG_AA_MULTI_THREAD)
+#include <pthread.h>
+#endif
 
 extern char *optarg;
 extern int optind;
@@ -646,11 +650,12 @@ int main(int argc, char *argv[])
 		}
 
 		ret = smbus_slave_poll(handle, 100, pec, mctp_receive_packet_handle, verbose);
-		if (ret) {
+		if (ret && ret != 0xFF) {
 			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
 			goto out;
 		}
 
+#if (!CONFIG_AA_MULTI_THREAD)
 		struct aa_args args = {
 			.handle = handle,
 			.verbose = verbose,
@@ -660,31 +665,92 @@ int main(int argc, char *argv[])
 			.nsid = NVME_NSID_ALL,
 			.pec = pec,
 			.ic = true,
-			.timeout = -2,
+			.timeout = 100,
 		};
-
 		int count = 0;
 		while (1) {
-			ret = nvme_identify_ctrl(&args);
-			if (ret) {
-				main_trace(ERROR, "nvme_identify_ctrl (%d)\n", ret);
-				goto out;
-			}
-
+			args.csi = 0;
 			ret = nvme_get_features_power_mgmt(&args, NVME_GET_FEATURES_SEL_CURRENT);
 			if (ret) {
 				main_trace(ERROR, "nvme_get_features_power_mgmt (%d)\n", ret);
 				goto out;
 			}
 
+			args.csi = 1;
+			ret = nvme_identify_ctrl(&args);
+			if (ret) {
+				main_trace(ERROR, "nvme_identify_ctrl (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = 0;
 			ret = nvme_get_log_smart(&args, NVME_NSID_ALL, true);
 			if (ret) {
 				main_trace(ERROR, "nvme_get_log_smart (%d)\n", ret);
 				goto out;
 			}
 			printf("nvme_get_log_smart # %d\n", ++count);
-			sleep(10);
+			sleep(1);
 		}
+#else
+		pthread_t t1;
+		struct aa_args t1_args = {
+			.handle = handle,
+			.verbose = verbose,
+			.slv_addr = slv_addr,
+			.dst_eid = tar_eid,
+			.csi = 0,
+			.nsid = NVME_NSID_ALL,
+			.pec = pec,
+			.ic = true,
+			.timeout = -2,
+			.thread_id = 1,
+		};
+		if (pthread_create(&t1, NULL, nvme_transmit_worker1, &t1_args) != 0) {
+			perror("pthread_create t1");
+			return 1;
+		}
+
+		// pthread_t t2;
+		// struct aa_args t2_args = {
+		//      .handle = handle,
+		//      .verbose = verbose,
+		//      .slv_addr = slv_addr,
+		//      .dst_eid = tar_eid,
+		//      .csi = 1,
+		//      .nsid = NVME_NSID_ALL,
+		//      .pec = pec,
+		//      .ic = true,
+		//      .timeout = -2,
+		//      .thread_id = 2,
+		// };
+		// if (pthread_create(&t2, NULL, nvme_transmit_worker2, &t2_args) != 0) {
+		//      perror("pthread_create t2");
+		//      return 1;
+		// }
+
+		pthread_t t3;
+		struct aa_args t3_args = {
+			.handle = handle,
+			.verbose = verbose,
+			.slv_addr = slv_addr,
+			.dst_eid = tar_eid,
+			.csi = 2,
+			.nsid = NVME_NSID_ALL,
+			.pec = pec,
+			.ic = true,
+			.timeout = -2,
+			.thread_id = 3,
+		};
+		if (pthread_create(&t3, NULL, nvme_receive_worker, &t3_args) != 0) {
+			perror("pthread_create t3");
+			return 1;
+		}
+
+		pthread_join(t1, NULL);
+		// pthread_join(t2, NULL);
+		pthread_join(t3, NULL);
+#endif
 
 		break;
 	}
@@ -693,7 +759,7 @@ int main(int argc, char *argv[])
 		aa_i2c_slave_enable(handle, 0x3a, 0, 0);
 		// while (1);
 		ret = smbus_slave_poll(handle, -1, false, smbus_slave_poll_default_callback, true);
-		if (ret)
+		if (ret && ret != 0xFF)
 			nvme_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
 
 		break;

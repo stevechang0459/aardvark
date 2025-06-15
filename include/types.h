@@ -174,6 +174,7 @@ struct aa_args {
 	bool csi;
 	bool pec;
 	bool ic;
+	int thread_id;
 };
 
 #endif  // TYPES_H

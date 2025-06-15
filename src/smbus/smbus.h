@@ -191,7 +191,7 @@ union udid_ds {
 		u16 subsys_device_id;
 		u16 subsys_vendor_id;
 		// Interface
-		union udid_interface interface;
+		union udid_interface uuid_if;
 		// Device ID
 		u16 device_id;
 		// Vendor ID
@@ -230,6 +230,8 @@ typedef int (*slave_poll_callback)(const void *, u32, int);
 int smbus_slave_poll_default_callback(const void *buf, u32 len, int verbose);
 int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
                      slave_poll_callback callback, int verbose);
+int smbus_slave_poll_2(Aardvark handle, int timeout_ms, bool pec_flag,
+                       slave_poll_callback callback, int verbose);
 void print_udid(const union udid_ds *udid);
 
 #endif // ~ SMBUS_H

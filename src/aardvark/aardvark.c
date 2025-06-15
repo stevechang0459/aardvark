@@ -53,7 +53,9 @@
  ========================================================================*/
 /* This #include can be customized to conform to the user's build paths. */
 #include "aardvark.h"
-
+#if (CONFIG_AA_MULTI_THREAD)
+#include <pthread.h>
+#endif
 
 /*=========================================================================
 | VERSION CHECK
@@ -1048,4 +1050,6 @@ int aa_gpio_change(
 	return c_aa_gpio_change(aardvark, timeout);
 }
 
-
+#if (CONFIG_AA_MULTI_THREAD)
+pthread_mutex_t aa_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif

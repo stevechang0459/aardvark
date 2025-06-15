@@ -67,11 +67,13 @@ int nvme_mi_send_command_message(struct aa_args *args, uint8_t opc, enum nvme_mi
 		return ret;
 	}
 
+#if (!CONFIG_AA_MULTI_THREAD)
 	int timeout = args->timeout == -2 ? 1000 : args->timeout;
 	ret = smbus_slave_poll(args->handle, timeout, args->pec, mctp_receive_packet_handle,
 	                       args->verbose);
-	if (ret)
+	if (ret && ret != 0xFF)
 		nvme_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
+#endif
 
 	return ret;
 }
@@ -191,7 +193,7 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 		printf("  lsbit                     : %d\n", res_mag->nmresp.invld_para.lsbit);
 	}
 
-	return 0;
+	return 0xFF; // End of Command for T3
 }
 
 int nvme_mi_message_handle(const union nvme_mi_msg *msg, uint16_t size)

@@ -90,6 +90,7 @@ typedef signed   __int64  s64;
 typedef float   f32;
 typedef double  f64;
 #else
+#include "global.h"
 #include "types.h"
 #endif /* TOTALPHASE_DATA_TYPES */
 
@@ -518,7 +519,8 @@ enum AardvarkI2cStatus {
 	AA_I2C_STATUS_DATA_NACK     = 4,
 	AA_I2C_STATUS_ARB_LOST      = 5,
 	AA_I2C_STATUS_BUS_LOCKED    = 6,
-	AA_I2C_STATUS_LAST_DATA_ACK = 7
+	AA_I2C_STATUS_LAST_DATA_ACK = 7,
+	AA_I2C_STATUS_MAX
 };
 #ifndef __cplusplus
 typedef enum AardvarkI2cStatus AardvarkI2cStatus;
@@ -910,8 +912,18 @@ int aa_gpio_change(
         u16      timeout
 );
 
+#if (CONFIG_AA_MULTI_THREAD)
+#include <pthread.h>
+extern pthread_mutex_t aa_mutex;
+#endif
 
-
+#if (CONFIG_AA_MULTI_THREAD)
+#define aa_mutex_lock(mutex)    pthread_mutex_lock(&(mutex));
+#define aa_mutex_unlock(mutex)  pthread_mutex_unlock(&(mutex));
+#else
+#define aa_mutex_lock(mutex)
+#define aa_mutex_unlock(mutex)
+#endif
 
 #ifdef __cplusplus
 }
