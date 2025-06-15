@@ -227,6 +227,7 @@ int smbus_arp_cmd_get_udid(Aardvark handle, void *udid, u8 slv_addr,
 int smbus_arp_cmd_assign_address(Aardvark handle, const union udid_ds *udid,
                                  u8 dev_tar_addr, bool pec_flag);
 typedef int (*slave_poll_callback)(const void *, u32, int);
+int smbus_slave_poll_default_callback(const void *buf, u32 len, int verbose);
 int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
                      slave_poll_callback callback, int verbose);
 void print_udid(const union udid_ds *udid);

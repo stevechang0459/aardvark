@@ -34,6 +34,7 @@ _BINNAME = aardvark
 ifeq ($(OS),Windows_NT)
     OSFLAG += -DWIN32
     BINNAME = $(_BINNAME).exe
+	DLL_FILE_EXT += dll
     ifeq ($(PROCESSOR_ARCHITEW6432),AMD64)
         OSFLAG += -DAMD64
     else
@@ -49,6 +50,7 @@ else
     ifeq ($(UNAME_S),Linux)
         OSFLAG += -DLINUX
 		BINNAME = $(_BINNAME)
+		DLL_FILE_EXT += so
     endif
     ifeq ($(UNAME_S),Darwin)
         OSFLAG += -DOSX
@@ -127,7 +129,7 @@ export C_FILE_EXT
 all:
 	mkdir -p $(BINDIR)
 	mkdir -p $(LIBDIR)
-	cp $(DLLDIR)/*.dll $(BINDIR)
+	cp $(DLLDIR)/*.$(DLL_FILE_EXT) $(BINDIR)
 	@echo $(OSFLAG)
 	for dir in $(SUBDIR); do \
 		cd $$dir; \

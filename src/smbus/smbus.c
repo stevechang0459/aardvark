@@ -522,6 +522,11 @@ dump:
 	return ret;
 }
 
+int smbus_slave_poll_default_callback(const void *buf, u32 len, int verbose)
+{
+	return 0;
+}
+
 int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
                      slave_poll_callback callback, int verbose)
 {

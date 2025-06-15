@@ -45,9 +45,9 @@ const struct function_list func_list[] = {
 	// Application
 	{"smb-write-file",    FUNC_IDX_SMB_WRITE_FILE},
 	{"test-mctp",         FUNC_IDX_TEST_MCTP},
+	{"smb-slv-poll",      FUNC_IDX_SMB_DEVICE_POLL},
 	// {"i2c-write-file",    FUNC_IDX_I2C_MASTER_WRITE_FILE},
 	// {"i2c-slave-poll",    FUNC_IDX_I2C_SLAVE_POLL},
-	// {"smb-dev-poll",      FUNC_IDX_SMB_DEVICE_POLL},
 	// {"test-smb-ctrl-tar", FUNC_IDX_TEST},
 
 	{NULL}
@@ -688,6 +688,16 @@ int main(int argc, char *argv[])
 
 		break;
 	}
+	case FUNC_IDX_SMB_DEVICE_POLL: {
+		int ret;
+		aa_i2c_slave_enable(handle, 0x3a, 0, 0);
+		// while (1);
+		ret = smbus_slave_poll(handle, -1, false, smbus_slave_poll_default_callback, true);
+		if (ret)
+			nvme_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
+
+		break;
+	}
 #if 0
 	case FUNC_IDX_I2C_MASTER_WRITE_FILE: {
 		if (argc < 5) {
@@ -738,22 +748,6 @@ int main(int argc, char *argv[])
 		ret = aa_i2c_slave_poll(port, dev_addr, timeout_ms);
 		if (ret)
 			main_trace(ERROR, "aa_i2c_slave_poll (%d)\n", ret);
-
-		break;
-	}
-	case FUNC_IDX_SMB_DEVICE_POLL: {
-		int ret = 0;
-		int port = atoi(argv[2]);
-		u8 dev_addr = (u8)strtol(argv[3], 0, 0);
-		int timeout_ms = atoi(argv[4]);
-
-		printf("port: %d\n", port);
-		printf("device: %02x\n", dev_addr);
-		printf("timeout(ms): %d\n", timeout_ms);
-
-		ret = aa_smbus_device_poll(port, dev_addr, timeout_ms);
-		if (ret)
-			main_trace(ERROR, "aa_smbus_device_poll (%d)\n", ret);
 
 		break;
 	}
