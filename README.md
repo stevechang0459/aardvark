@@ -31,3 +31,13 @@ make
 # AStyle
 $(pwd)/Astyle/bin/astyle.exe --options=$(pwd)/_astylerc -R ./*.c,*.h --exclude=AStyle --formatted
 ```
+
+**License**
+---
+
+This project is licensed under the GNU General Public License v2.0.
+
+Some portions of the code are derived from the libnvme project,
+which is licensed under the LGPL-2.1-or-later license.
+
+In accordance with LGPL terms, this project redistributes those portions under the GPLv2.
