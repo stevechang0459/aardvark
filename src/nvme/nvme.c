@@ -13,8 +13,6 @@
 #include <unistd.h>
 #ifdef WIN32
 #include <windows.h>
-#else
-#error ""
 #endif
 
 #if (CONFIG_AA_MULTI_THREAD)
@@ -32,7 +30,11 @@ void *nvme_transmit_worker1(void *args)
 	while (1) {
 		printf("[T1] Transmit worker round #%d done\n", ++count);
 		// sleep(1);
+		#ifdef WIN32
 		Sleep(500);
+		#else
+		sleep(500 * 1000);
+		#endif
 
 		ret = nvme_get_features_power_mgmt(args, NVME_GET_FEATURES_SEL_CURRENT);
 		if (ret) {

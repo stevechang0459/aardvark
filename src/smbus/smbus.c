@@ -239,7 +239,11 @@ try:
 		ret = -SMBUS_CMD_WRITE_FAILED;
 		aa_mutex_unlock(aa_mutex);
 		if (ret && ++count < 3) {
+		#ifdef WIN32
 			Sleep(100);
+		#else
+			sleep(100 * 1000);
+		#endif
 			goto try;
 		}
 

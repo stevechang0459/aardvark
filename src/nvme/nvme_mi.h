@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include <stdbool.h>
+#include <stdlib.h>
 
 /**
  * DSP0235, 7.6 Maximum message size
