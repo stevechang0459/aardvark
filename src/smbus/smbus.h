@@ -20,6 +20,15 @@
 // 1101_010xb, 0xD4, Basic Management Command
 #define SMBUS_ADDR_NVME_MI_BMC          (0x6a)
 
+#define SMBUS_FREQ_100KHZ               (0)
+#define SMBUS_FREQ_400KHZ               (1)
+#define SMBUS_FREQ_1MHZ                 (2)
+#define SMBUS_FREQ_RESERVED             (3)
+
+#define SMBUS_FREQ_ENDPOINT             (SMBUS_FREQ_100KHZ)
+#define SMBUS_FREQ_FRU_INFO_DEV         (SMBUS_FREQ_100KHZ)
+#define SMBUS_FREQ_SMBUS_MUX            (SMBUS_FREQ_100KHZ)
+
 /**
  * Address Type
  */
@@ -32,13 +41,12 @@
 // Random Number, Non-PTA / Random Number
 #define SMBUS_ADDR_TYPE_RNG             (3)
 
-#define SMBUS_TRACE_FILTER (0 \
-        | BITLSHIFT(1, ERROR) \
-        | BITLSHIFT(1, WARN) \
-        | BITLSHIFT(1, DEBUG) \
-        | BITLSHIFT(1, INFO) \
-        | BITLSHIFT(1, INIT) \
-        )
+#define SMBUS_TRACE_FILTER ( \
+        BITLSHIFT(1, ERROR) | \
+        BITLSHIFT(1, WARN) | \
+        BITLSHIFT(1, DEBUG) | \
+        BITLSHIFT(1, INFO) | \
+        BITLSHIFT(1, INIT))
 
 #if 1
 extern const char *smbus_trace_header[];
