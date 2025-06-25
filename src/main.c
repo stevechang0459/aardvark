@@ -792,11 +792,7 @@ int main(int argc, char *argv[])
 			}
 
 			printf("Round #%d done\n", ++count);
-#ifdef WIN32
-			Sleep(1000);
-#else
-			sleep(1000 * 1000);
-#endif
+			SLEEP(1000);
 		}
 #else
 		pthread_t t1;
