@@ -10,7 +10,7 @@
 #include "mctp_smbus.h"
 #include "mctp_transport.h"
 
-#include "utility.h"
+#include "mics.h"
 #include "crc32.h"
 
 static struct mctp_transport_manager mctp_tran_ctx;

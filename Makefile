@@ -20,7 +20,7 @@ SUBDIR = \
 	src \
 	src/checksum \
 	src/crc \
-	src/utility \
+	src/mics \
 	src/aardvark \
 	src/smbus \
 	src/mctp \
@@ -101,7 +101,7 @@ LIBS = \
 	aardvark \
 	checksum \
 	crc \
-	utility \
+	mics \
 	i2c \
 
 LDLIBS = $(foreach lib,$(LIBS),-l$(lib)) -lm # -lpthread	# <-- Do not change this order.

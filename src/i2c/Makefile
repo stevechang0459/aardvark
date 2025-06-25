@@ -11,7 +11,7 @@ SUBDIR =
 INCLUDE = \
 	aardvark \
 	crc \
-	utility \
+	mics \
 	smbus \
 
 SRCS = $(wildcard *.$(C_FILE_EXT))

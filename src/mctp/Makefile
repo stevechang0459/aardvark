@@ -12,7 +12,7 @@ INCLUDE = \
 	aardvark \
 	crc \
 	smbus \
-	utility \
+	mics \
 	nvme \
 
 SRCS = $(wildcard *.$(C_FILE_EXT))

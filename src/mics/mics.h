@@ -1,5 +1,5 @@
-#ifndef UTILITY_H
-#define UTILITY_H
+#ifndef MICS_H
+#define MICS_H
 
 #include "types.h"
 #include <stdbool.h>
@@ -16,4 +16,4 @@ void reverse(void *in, u32 len);
 
 #define DBGPRINT(filter, ...)   printf(__VA_ARGS__)
 
-#endif // ~ UTILITY_H
+#endif // ~ MICS_H

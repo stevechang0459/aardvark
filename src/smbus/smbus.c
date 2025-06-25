@@ -2,7 +2,7 @@
 #include "smbus.h"
 #include "crc.h"
 #include "crc8.h"
-#include "utility.h"
+#include "mics.h"
 
 #include "types.h"
 #include <stdbool.h>

@@ -2,9 +2,9 @@
 # Makefile created by Steve Chang
 # Date modified: 2024.06.22
 
-LIBNAME = libutility.a
+LIBNAME = libmics.a
 
-DIR = utility
+DIR = mics
 
 SUBDIR =
 

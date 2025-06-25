@@ -11,7 +11,7 @@ SUBDIR =
 INCLUDE = \
 	checksum \
 	crc \
-	utility \
+	mics \
 	aardvark \
 	smbus \
 	mctp \

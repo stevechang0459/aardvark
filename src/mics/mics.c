@@ -1,8 +1,8 @@
+#include "mics.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-
-#include "utility.h"
 
 #ifdef WIN32
 void *align_alloc(size_t size, u32 align)

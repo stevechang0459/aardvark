@@ -4,7 +4,7 @@
 #include "mctp_message.h"
 #include "mctp_core.h"
 #include "crc32.h"
-#include "utility.h"
+#include "mics.h"
 #include "libnvme_types.h"
 #include "libnvme_mi_mi.h"
 #include "nvme_cmd.h"

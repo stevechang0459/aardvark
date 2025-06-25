@@ -5,7 +5,7 @@
 #include "libnvme_mi_mi.h"
 
 #include "crc32.h"
-#include "utility.h"
+#include "mics.h"
 
 #include <stdlib.h>
 #include <string.h>
