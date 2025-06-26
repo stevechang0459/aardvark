@@ -264,10 +264,8 @@ int nvme_get_nsid_log(struct aa_args *args, uint32_t nsid, enum nvme_cmd_get_log
 	nvme_cmd_ctx.opc = req_data->opc;
 	nvme_cmd_ctx.lid = req_data->get_log_page.cdw10.lid;
 
-	// if (verbose)
-	//      print_buf(req_data, sizeof(*req_data), "req_data");
-
-	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg, sizeof(*req_data));
+	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg,
+	                                     sizeof(msg->nmh) + sizeof(*req_data));
 	if (ret < 0)
 		nvme_trace(ERROR, "nvme_mi_send_admin_command failed (%d)\n", ret);
 
@@ -296,10 +294,8 @@ int nvme_identify_cns_nsid(struct aa_args *args, uint32_t nsid, uint8_t cns)
 
 	nvme_cmd_ctx.opc = req_data->opc;
 
-	// if (verbose)
-	//      print_buf(req_data, sizeof(*req_data), "req_data");
-
-	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg, sizeof(*req_data));
+	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg,
+	                                     sizeof(msg->nmh) + sizeof(*req_data));
 	if (ret < 0)
 		nvme_trace(ERROR, "nvme_mi_send_admin_command failed (%d)\n", ret);
 
@@ -329,10 +325,8 @@ int nvme_get_features(struct aa_args *args, enum nvme_features_id fid, enum nvme
 	nvme_cmd_ctx.fid = fid;
 	nvme_cmd_ctx.sel = sel;
 
-	// if (verbose)
-	//      print_buf(req_data, sizeof(*req_data), "req_data");
-
-	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg, sizeof(*req_data));
+	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg,
+	                                     sizeof(msg->nmh) + sizeof(*req_data));
 	if (ret < 0)
 		nvme_trace(ERROR, "nvme_mi_send_admin_command failed (%d)\n", ret);
 

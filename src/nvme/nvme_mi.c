@@ -31,18 +31,14 @@ int nvme_mi_send_control_primitive()
 	return 0;
 }
 
-int nvme_mi_send_command_message(struct aa_args *args, uint8_t opc, enum nvme_mi_message_type nmimt,
-                                 union nvme_mi_msg *msg, size_t req_size)
+int nvme_mi_send_command_message(struct aa_args *args, enum nvme_mi_message_type nmimt,
+                                 uint8_t opc, union nvme_mi_msg *msg, size_t msg_size)
 {
-	int ret;
-
-	// TBD
 	nvme_mi_ctx.nmimt = nmimt;
 	nvme_mi_ctx.opc = opc;
 	nvme_mi_ctx.req_sent = 1;
 
 	memset(msg, 0, sizeof(msg->nmh));
-	uint16_t msg_size = sizeof(msg->nmh) + req_size;
 
 	msg->nmh.mt    = MCTP_MSG_TYPE_NVME_MM;
 	msg->nmh.ic    = args->ic;
@@ -59,13 +55,13 @@ int nvme_mi_send_command_message(struct aa_args *args, uint8_t opc, enum nvme_mi
 		msg_size = mctp_message_append_mic(msg, msg_size);
 
 	if (args->verbose) {
-		print_buf(msg, msg_size, "[%s] nvme mi command message: %d", __func__, msg_size);
+		print_buf(msg, msg_size, "[%s]: %d", __func__, msg_size);
 		nvme_trace(DEBUG, "crc: %x\n", ~crc32_le_generic(CRC_INIT, msg, msg_size - 4,
 		                                                 REVERSED_POLY_CRC32));
 	}
 
-	ret =  mctp_transport_send_message(args->slv_addr, args->dst_eid, msg, msg_size,
-	                                   rand(), true, args->verbose);
+	int ret =  mctp_transport_send_message(args->slv_addr, args->dst_eid, msg, msg_size,
+	                                       rand(), true, args->verbose);
 	if (ret) {
 		nvme_trace(ERROR, "mctp_transport_send_message (%d)\n", ret);
 		return ret;
@@ -82,16 +78,38 @@ int nvme_mi_send_command_message(struct aa_args *args, uint8_t opc, enum nvme_mi
 	return ret;
 }
 
-int nvme_mi_send_mi_command(struct aa_args *args, uint8_t opc, union nvme_mi_msg *msg,
-                            size_t req_size)
+void nvme_mi_print_msg_header(const union nvme_mi_req_msg *req_msg)
 {
-	return nvme_mi_send_command_message(args, opc, NVME_MI_MT_MI, msg, req_size);
+	printf("\033[30;43mopc : 0x%08x\033[0m\n", req_msg->opc);
+	printf("\033[30;43mnmd0: 0x%08x\033[0m\n", req_msg->nmd0.value);
+	printf("\033[30;43mnmd1: 0x%08x\033[0m\n", req_msg->nmd1.value);
+}
+
+int nvme_mi_send_mi_command(struct aa_args *args, uint8_t opc, union nvme_mi_nmd0 nmd0,
+                            union nvme_mi_nmd1 nmd1)
+{
+	union nvme_mi_msg *msg = malloc(sizeof(*msg));
+	memset(msg, 0, sizeof(*msg));
+	union nvme_mi_req_msg *req_msg = (void *)msg;
+
+	req_msg->opc  = opc;
+	req_msg->nmd0 = nmd0;
+	req_msg->nmd1 = nmd1;
+	nvme_mi_print_msg_header(req_msg);
+
+	int ret = nvme_mi_send_command_message(args, NVME_MI_MT_MI, opc, msg, sizeof(union nvme_mi_req_dw));
+	if (ret < 0)
+		nvme_trace(ERROR, "nvme_mi_send_command_message failed (%d)\n", ret);
+
+	free(msg);
+
+	return ret;
 }
 
 int nvme_mi_send_admin_command(struct aa_args *args, uint8_t opc, union nvme_mi_msg *msg,
-                               size_t req_size)
+                               size_t msg_size)
 {
-	return nvme_mi_send_command_message(args, opc, NVME_MI_MT_ADMIN, msg, req_size);
+	return nvme_mi_send_command_message(args, NVME_MI_MT_ADMIN, opc, msg, msg_size);
 }
 
 int nvme_mi_request_message_handle(const union nvme_mi_res_msg *msg, uint16_t size)
@@ -413,13 +431,6 @@ int nvme_mi_message_handle(const union nvme_mi_msg *msg, uint16_t size)
 	return ret;
 }
 
-void nvme_mi_print_msg_header(const union nvme_mi_req_msg *req_msg)
-{
-	printf("\033[30;43mopc : 0x%08x\033[0m\n", req_msg->opc);
-	printf("\033[30;43mnmd0: 0x%08x\033[0m\n", req_msg->nmd0.value);
-	printf("\033[30;43mnmd1: 0x%08x\033[0m\n", req_msg->nmd1.value);
-}
-
 int nvme_mi_mi_subsystem_health_status_poll(struct aa_args *args, bool cs)
 {
 	union nvme_mi_nmd0 nmd0 = {
@@ -428,76 +439,20 @@ int nvme_mi_mi_subsystem_health_status_poll(struct aa_args *args, bool cs)
 	union nvme_mi_nmd1 nmd1 = {
 		.nshsp.cs = cs,
 	};
-	union nvme_mi_msg *msg = malloc(sizeof(*msg));
-	memset(msg, 0, sizeof(*msg));
-	union nvme_mi_req_msg *req_msg = (void *)msg;
 
-	req_msg->opc  = nvme_mi_mi_opcode_subsys_health_status_poll;
-	req_msg->nmd0 = nmd0;
-	req_msg->nmd1 = nmd1;
-	nvme_mi_print_msg_header(req_msg);
-
-	int ret = nvme_mi_send_mi_command(args, req_msg->opc, msg, sizeof(union nvme_mi_req_dw) - sizeof(union nvme_mi_msg_header));
-	if (ret < 0)
-		nvme_trace(ERROR, "nvme_mi_send_mi_command failed (%d)\n", ret);
-
-	free(msg);
-
-	return ret;
+	return nvme_mi_send_mi_command(args, nvme_mi_mi_opcode_subsys_health_status_poll, nmd0, nmd1);
 }
 
-int nvme_mi_mi_controller_health_status_poll(struct aa_args *args, bool ccf)
+int nvme_mi_mi_controller_health_status_poll(struct aa_args *args, union nvme_mi_nmd0 nmd0,
+                                             union nvme_mi_nmd1 nmd1)
 {
-	union nvme_mi_nmd0 nmd0 = {
-		.chsp.sctlid = 0,
-		.chsp.maxrent = 0,
-		.chsp.incf = 1,
-		.chsp.all = 0,
-	};
-	union nvme_mi_nmd1 nmd1 = {
-		.chsp.csts = 1,
-		.chsp.ctemp = 1,
-		.chsp.pdlu = 1,
-		.chsp.spare = 1,
-		.chsp.cwarn = 1,
-		.chsp.ccf = ccf,
-	};
-	union nvme_mi_msg *msg = malloc(sizeof(*msg));
-	memset(msg, 0, sizeof(*msg));
-	union nvme_mi_req_msg *req_msg = (void *)msg;
-
-	req_msg->opc  = nvme_mi_mi_opcode_controller_health_status_poll;
-	req_msg->nmd0 = nmd0;
-	req_msg->nmd1 = nmd1;
-	nvme_mi_print_msg_header(req_msg);
-
-	int ret = nvme_mi_send_mi_command(args, req_msg->opc, msg, sizeof(union nvme_mi_req_dw) - sizeof(union nvme_mi_msg_header));
-	if (ret < 0)
-		nvme_trace(ERROR, "nvme_mi_send_mi_command failed (%d)\n", ret);
-
-	free(msg);
-
-	return ret;
+	return nvme_mi_send_mi_command(args, nvme_mi_mi_opcode_controller_health_status_poll, nmd0, nmd1);
 }
 
 int nvme_mi_mi_config_get(struct aa_args *args, union nvme_mi_nmd0 nmd0, union nvme_mi_nmd1 nmd1)
 {
-	union nvme_mi_msg *msg = malloc(sizeof(*msg));
-	memset(msg, 0, sizeof(*msg));
-	union nvme_mi_req_msg *req_msg = (void *)msg;
-
-	req_msg->opc = nvme_mi_mi_opcode_configuration_get;
-	req_msg->nmd0 = nmd0;
-	req_msg->nmd1 = nmd1;
-	nvme_mi_print_msg_header(req_msg);
-
-	int ret = nvme_mi_send_mi_command(args, req_msg->opc, msg, sizeof(union nvme_mi_req_dw) - sizeof(union nvme_mi_msg_header));
-	if (ret < 0)
-		nvme_trace(ERROR, "nvme_mi_send_mi_command failed (%d)\n", ret);
-
-	free(msg);
-
-	return ret;
+	nvme_mi_ctx.cfg_id = nmd0.cfg.cfg_id;
+	return nvme_mi_send_mi_command(args, nvme_mi_mi_opcode_configuration_get, nmd0, nmd1);
 }
 
 // Configuration Get - SMBus/I2C Frequency (Configuration Identifier 01h)
@@ -511,8 +466,6 @@ int nvme_mi_mi_config_get_sif(struct aa_args *args)
 		.value = 0,
 	};
 
-	nvme_mi_ctx.cfg_id = nmd0.cfg.cfg_id;
-
 	return nvme_mi_mi_config_get(args, nmd0, nmd1);
 }
 
@@ -525,8 +478,6 @@ int nvme_mi_mi_config_get_hsc(struct aa_args *args)
 	union nvme_mi_nmd1 nmd1 = {
 		.value = 0,
 	};
-
-	nvme_mi_ctx.cfg_id = nmd0.cfg.cfg_id;
 
 	return nvme_mi_mi_config_get(args, nmd0, nmd1);
 }
@@ -542,30 +493,14 @@ int nvme_mi_mi_config_get_mtus(struct aa_args *args)
 		.value = 0,
 	};
 
-	nvme_mi_ctx.cfg_id = nmd0.cfg.cfg_id;
-
 	return nvme_mi_mi_config_get(args, nmd0, nmd1);
 }
 
 // Configuration Set
 int nvme_mi_mi_config_set(struct aa_args *args, union nvme_mi_nmd0 nmd0, union nvme_mi_nmd1 nmd1)
 {
-	union nvme_mi_msg *msg = malloc(sizeof(*msg));
-	memset(msg, 0, sizeof(*msg));
-	union nvme_mi_req_msg *req_msg = (void *)msg;
-
-	req_msg->opc = nvme_mi_mi_opcode_configuration_set;
-	req_msg->nmd0 = nmd0;
-	req_msg->nmd1 = nmd1;
-	nvme_mi_print_msg_header(req_msg);
-
-	int ret = nvme_mi_send_mi_command(args, req_msg->opc, msg, sizeof(union nvme_mi_req_dw) - sizeof(union nvme_mi_msg_header));
-	if (ret < 0)
-		nvme_trace(ERROR, "nvme_mi_send_mi_command failed (%d)\n", ret);
-
-	free(msg);
-
-	return ret;
+	nvme_mi_ctx.cfg_id = nmd0.cfg.cfg_id;
+	return nvme_mi_send_mi_command(args, nvme_mi_mi_opcode_configuration_set, nmd0, nmd1);
 }
 
 // Configuration Set - SMBus/I2C Frequency (Configuration Identifier 01h)
@@ -580,8 +515,6 @@ int nvme_mi_mi_config_set_sif(struct aa_args *args, uint8_t port_id, uint8_t fre
 		.cfg.value = 0,
 	};
 
-	nvme_mi_ctx.cfg_id = nmd0.cfg.cfg_id;
-
 	return nvme_mi_mi_config_set(args, nmd0, nmd1);
 }
 
@@ -594,8 +527,6 @@ int nvme_mi_mi_config_set_hsc(struct aa_args *args, union nmd1_config_hsc hsc)
 	union nvme_mi_nmd1 nmd1 = {
 		.cfg.value = hsc.value,
 	};
-
-	nvme_mi_ctx.cfg_id = nmd0.cfg.cfg_id;
 
 	return nvme_mi_mi_config_set(args, nmd0, nmd1);
 }
@@ -610,8 +541,6 @@ int nvme_mi_mi_config_set_mtus(struct aa_args *args, uint8_t port_id, union nmd1
 	union nvme_mi_nmd1 nmd1 = {
 		.cfg.mtus.mtus = mtus.value,
 	};
-
-	nvme_mi_ctx.cfg_id = nmd0.cfg.cfg_id;
 
 	return nvme_mi_mi_config_set(args, nmd0, nmd1);
 }

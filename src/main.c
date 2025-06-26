@@ -676,6 +676,8 @@ int main(int argc, char *argv[])
 			.ic = true,
 			.timeout = 100,
 		};
+		union nvme_mi_nmd0 nmd0;
+		union nvme_mi_nmd1 nmd1;
 		int count = 0;
 		while (1) {
 			args.csi = 0;
@@ -707,15 +709,25 @@ int main(int argc, char *argv[])
 			}
 
 			args.csi = !args.csi;
-			ret = nvme_mi_mi_controller_health_status_poll(&args, true);
+			nmd0.chsp.sctlid  = 0,
+			nmd0.chsp.maxrent = 0,
+			nmd0.chsp.incf    = 1,
+			nmd0.chsp.all     = 0,
+			nmd1.chsp.csts    = 1,
+			nmd1.chsp.ctemp   = 1,
+			nmd1.chsp.pdlu    = 1,
+			nmd1.chsp.spare   = 1,
+			nmd1.chsp.cwarn   = 1,
+			nmd1.chsp.ccf     = true,
+			ret = nvme_mi_mi_controller_health_status_poll(&args, nmd0, nmd1);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_controller_health_status_poll (%d)\n", ret);
 				goto out;
 			}
 
 			args.csi = !args.csi;
-			union nvme_mi_nmd0 nmd0 = {.value = 0,};
-			union nvme_mi_nmd1 nmd1 = {.value = 0,};
+			nmd0.value = 0;
+			nmd1.value = 0;
 			ret = nvme_mi_mi_config_get(&args, nmd0, nmd1);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_get_sif (%d)\n", ret);

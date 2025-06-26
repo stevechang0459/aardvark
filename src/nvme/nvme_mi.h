@@ -656,11 +656,10 @@ union chscf {
 
 #pragma pack(pop)
 
-int nvme_mi_send_admin_command(struct aa_args *args, uint8_t opc, union nvme_mi_msg *msg,
-                               size_t req_size);
+int nvme_mi_send_admin_command(struct aa_args *args, uint8_t opc, union nvme_mi_msg *msg, size_t msg_size);
 int nvme_mi_message_handle(const union nvme_mi_msg *msg, uint16_t size);
 int nvme_mi_mi_subsystem_health_status_poll(struct aa_args *args, bool cs);
-int nvme_mi_mi_controller_health_status_poll(struct aa_args *args, bool ccf);
+int nvme_mi_mi_controller_health_status_poll(struct aa_args *args, union nvme_mi_nmd0 nmd0, union nvme_mi_nmd1 nmd1);
 int nvme_mi_mi_config_get(struct aa_args *args, union nvme_mi_nmd0 nmd0, union nvme_mi_nmd1 nmd1);
 int nvme_mi_mi_config_get_sif(struct aa_args *args);
 int nvme_mi_mi_config_get_hsc(struct aa_args *args);
