@@ -120,6 +120,7 @@ enum nvme_mi_message_type {
 	NVME_MI_MT_ADMIN = 2,
 	NVME_MI_MT_PCIE = 4,
 	NVME_MI_MT_AE = 5,
+	NVNE_MI_MT_MAX
 };
 
 /**
@@ -221,6 +222,7 @@ struct nvme_mi_msg_resp {
 enum nvme_mi_mi_opcode {
 	nvme_mi_mi_opcode_mi_data_read = 0x00,
 	nvme_mi_mi_opcode_subsys_health_status_poll = 0x01,
+	nvme_mi_mi_opcode_controller_health_status_poll = 0x02,
 	nvme_mi_mi_opcode_configuration_set = 0x03,
 	nvme_mi_mi_opcode_configuration_get = 0x04,
 };

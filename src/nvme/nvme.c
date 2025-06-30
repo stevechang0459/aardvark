@@ -1,9 +1,10 @@
 #include "global.h"
 #include "types.h"
+#include "libnvme_types.h"
 #include "aardvark.h"
 #include "nvme.h"
 #include "nvme_cmd.h"
-#include "libnvme_types.h"
+#include "nvme_mi.h"
 
 #include "mctp_core.h"
 #include "smbus.h"
@@ -26,20 +27,25 @@ void *nvme_transmit_worker1(void *args)
 {
 	int ret;
 	int count = 0;
+	int retry = 0;
 
 	while (1) {
-		printf("[T1] Transmit worker round #%d done\n", ++count);
-		// sleep(1);
-		#ifdef WIN32
+		printf("[T1] Transmit worker round #%d done (%d)\n", ++count, retry);
+		retry = -1;
+try:
+			if (++retry >= 10)
+				return NULL;
+
+#ifdef WIN32
 		Sleep(500);
-		#else
+#else
 		sleep(500 * 1000);
-		#endif
+#endif
 
 		ret = nvme_get_features_power_mgmt(args, NVME_GET_FEATURES_SEL_CURRENT);
 		if (ret) {
 			nvme_trace(ERROR, "nvme_get_features_power_mgmt (%d)\n", ret);
-			return NULL;
+			goto try;
 		}
 
 		pthread_mutex_lock(&lock);
@@ -54,7 +60,7 @@ void *nvme_transmit_worker1(void *args)
 		ret = nvme_identify_ctrl(args);
 		if (ret) {
 			nvme_trace(ERROR, "nvme_identify_ctrl (%d)\n", ret);
-			return NULL;
+			goto try;
 		}
 
 		pthread_mutex_lock(&lock);
@@ -69,7 +75,37 @@ void *nvme_transmit_worker1(void *args)
 		ret = nvme_get_log_smart(args, NVME_NSID_ALL, true);
 		if (ret) {
 			nvme_trace(ERROR, "nvme_get_log_smart (%d)\n", ret);
-			return NULL;
+			goto try;
+		}
+
+		pthread_mutex_lock(&lock);
+		tx_ready = 1;
+		pthread_cond_signal(&cond_tx_to_rx);
+		while (rx_ready == 0) {
+			pthread_cond_wait(&cond_rx_to_tx, &lock);
+		}
+		rx_ready = 0;
+		pthread_mutex_unlock(&lock);
+
+		ret = nvme_mi_mi_subsystem_health_status_poll(args, true);
+		if (ret) {
+			nvme_trace(ERROR, "nvme_mi_mi_subsystem_health_status_poll (%d)\n", ret);
+			goto try;
+		}
+
+		pthread_mutex_lock(&lock);
+		tx_ready = 1;
+		pthread_cond_signal(&cond_tx_to_rx);
+		while (rx_ready == 0) {
+			pthread_cond_wait(&cond_rx_to_tx, &lock);
+		}
+		rx_ready = 0;
+		pthread_mutex_unlock(&lock);
+
+		ret = nvme_mi_mi_controller_health_status_poll(args, true);
+		if (ret) {
+			nvme_trace(ERROR, "nvme_mi_mi_controller_health_status_poll (%d)\n", ret);
+			goto try;
 		}
 
 		pthread_mutex_lock(&lock);
@@ -89,11 +125,10 @@ void *nvme_receive_worker(void *args)
 	int ret;
 	struct aa_args *_args = args;
 	int count = 0;
-	int timeout = _args->timeout == -2 ? 1000 : _args->timeout;
+	int timeout = _args->timeout == -2 ? 2000 : _args->timeout;
 
 	while (1) {
 		printf("[T3] Receive worker round #%d done\n", ++count);
-		// Sleep(1);
 
 		pthread_mutex_lock(&lock);
 		while (tx_ready == 0) {

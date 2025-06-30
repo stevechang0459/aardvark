@@ -14,6 +14,8 @@
 #include "nvme_cmd.h"
 #include "nvme/nvme.h"
 #include "libnvme_types.h"
+#include "libnvme_mi_mi.h"
+#include "nvme_mi.h"
 
 #include "global.h"
 #include "types.h"
@@ -31,6 +33,9 @@
 #include <errno.h>
 #if (CONFIG_AA_MULTI_THREAD)
 #include <pthread.h>
+#endif
+#ifdef WIN32
+#include <windows.h>
 #endif
 
 extern char *optarg;
@@ -680,21 +685,118 @@ int main(int argc, char *argv[])
 				goto out;
 			}
 
-			args.csi = 1;
+			args.csi = !args.csi;
 			ret = nvme_identify_ctrl(&args);
 			if (ret) {
 				main_trace(ERROR, "nvme_identify_ctrl (%d)\n", ret);
 				goto out;
 			}
 
-			args.csi = 0;
+			args.csi = !args.csi;
 			ret = nvme_get_log_smart(&args, NVME_NSID_ALL, true);
 			if (ret) {
 				main_trace(ERROR, "nvme_get_log_smart (%d)\n", ret);
 				goto out;
 			}
-			printf("nvme_get_log_smart # %d\n", ++count);
-			sleep(1);
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_subsystem_health_status_poll(&args, true);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_subsystem_health_status_poll (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_controller_health_status_poll(&args, true);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_controller_health_status_poll (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			union nvme_mi_nmd0 nmd0 = {.value = 0,};
+			union nvme_mi_nmd1 nmd1 = {.value = 0,};
+			ret = nvme_mi_mi_config_get(&args, nmd0, nmd1);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_config_get_sif (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_config_set(&args, nmd0, nmd1);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_config_get_sif (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_config_get_sif(&args);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_config_get_sif (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_config_get_mtus(&args);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_config_get_mtus (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_config_get_hsc(&args);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_config_get_hsc (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_config_set_sif(&args, NVME_MI_PORT_ID_SMBUS, SMBUS_FREQ_400KHZ);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_config_set_sif (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_config_set_sif(&args, NVME_MI_PORT_ID_PCIE, SMBUS_FREQ_100KHZ);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_config_set_sif (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			union nmd1_config_hsc hsc = {
+				.value = 0xFFFFFFFF,
+			};
+			ret = nvme_mi_mi_config_set_hsc(&args, hsc);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_config_set_hsc (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			union nmd1_config_mtus mtus = {
+				.value = 0xFFFFFFFF,
+			};
+			ret = nvme_mi_mi_config_set_mtus(&args, NVME_MI_PORT_ID_SMBUS, mtus);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_config_set_mtus (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_config_set_mtus(&args, NVME_MI_PORT_ID_PCIE, mtus);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_config_set_mtus (%d)\n", ret);
+				goto out;
+			}
+
+			printf("Round #%d done\n", ++count);
+#ifdef WIN32
+			Sleep(1000);
+#else
+			sleep(1000 * 1000);
+#endif
 		}
 #else
 		pthread_t t1;

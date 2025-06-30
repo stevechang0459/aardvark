@@ -2,6 +2,7 @@
 #include "nvme.h"
 #include "nvme_mi.h"
 #include "libnvme_types.h"
+#include "libnvme_mi_mi.h"
 
 #include "crc32.h"
 #include "utility.h"
@@ -32,47 +33,44 @@ const char *nvme_trace_header[TRACE_TYPE_MAX] =  {
 void nvme_show_log_page(const struct nvme_smart_log *smart_log)
 {
 	printf("critical_warning            : %x\n", smart_log->critical_warning);
-	// printf("temperature                 : %x\n", smart_log->temperature[2]);
+	printf("temperature                 : %3d K (%3d C)\n", *(word *)smart_log->temperature, *(word *)smart_log->temperature - 273);
 	printf("avail_spare                 : %x\n", smart_log->avail_spare);
 	printf("spare_thresh                : %x\n", smart_log->spare_thresh);
 	printf("percent_used                : %x\n", smart_log->percent_used);
 	printf("endu_grp_crit_warn_sumry    : %x\n", smart_log->endu_grp_crit_warn_sumry);
-
-	// printf("rsvd7                       : %x\n", smart_log->rsvd7[25]);
-	// printf("data_units_read             : %x\n", smart_log->data_units_read[16]);
-	print_buf(smart_log->data_units_read, sizeof(smart_log->data_units_read), "data_unit_read");
-	// printf("data_units_written          : %x\n", smart_log->data_units_written[16]);
-	print_buf(smart_log->data_units_written, sizeof(smart_log->data_units_written), "data_units_written");
-	// printf("host_reads                  : %x\n", smart_log->host_reads[16]);
-	print_buf(smart_log->host_reads, sizeof(smart_log->host_reads), "host_reads");
-	// printf("host_writes                 : %x\n", smart_log->host_writes[16]);
-	print_buf(smart_log->host_writes, sizeof(smart_log->host_writes), "host_writes");
-	// printf("ctrl_busy_time              : %x\n", smart_log->ctrl_busy_time[16]);
-	print_buf(smart_log->ctrl_busy_time, sizeof(smart_log->ctrl_busy_time), "ctrl_busy_time");
-	// printf("power_cycles                : %x\n", smart_log->power_cycles[16]);
-	print_buf(smart_log->power_cycles, sizeof(smart_log->power_cycles), "power_cycles");
-	// printf("power_on_hours              : %x\n", smart_log->power_on_hours[16]);
-	print_buf(smart_log->power_on_hours, sizeof(smart_log->power_on_hours), "power_on_hours");
-	// printf("unsafe_shutdowns            : %x\n", smart_log->unsafe_shutdowns[16]);
-	print_buf(smart_log->unsafe_shutdowns, sizeof(smart_log->unsafe_shutdowns), "unsafe_shutdowns");
-	// printf("media_errors                : %x\n", smart_log->media_errors[16]);
-	print_buf(smart_log->media_errors, sizeof(smart_log->media_errors), "media_errors");
-	// printf("num_err_log_entries         : %x\n", smart_log->num_err_log_entries[16]);
-	print_buf(smart_log->num_err_log_entries, sizeof(smart_log->num_err_log_entries), "num_err_log_entries");
-
-	printf("warning_temp_time           : %x\n", smart_log->warning_temp_time);
-	printf("critical_comp_time          : %x\n", smart_log->critical_comp_time);
-	// printf("temp_sensor: %x\n", smart_log->temp_sensor[8]);
-	// print_buf(smart_log->temp_sensor, sizeof(smart_log->temp_sensor), "temp_sensor");
+	// printf("rsvd7: %x\n", smart_log->rsvd7[25]);
+	printf("data_units_read             : %lld\n", *(qword *)smart_log->data_units_read);
+	print_buf(smart_log->data_units_read, sizeof(smart_log->data_units_read), "data_units_read[16]");
+	printf("data_units_written          : %lld\n", *(qword *)smart_log->data_units_written);
+	print_buf(smart_log->data_units_written, sizeof(smart_log->data_units_written), "data_units_written[16]");
+	printf("host_reads                  : %lld\n", *(qword *)smart_log->host_reads);
+	print_buf(smart_log->host_reads, sizeof(smart_log->host_reads), "host_reads[16]");
+	printf("host_writes                 : %lld\n", *(qword *)smart_log->host_writes);
+	print_buf(smart_log->host_writes, sizeof(smart_log->host_writes), "host_writes[16]");
+	printf("ctrl_busy_time              : %lld\n", *(qword *)smart_log->ctrl_busy_time);
+	print_buf(smart_log->ctrl_busy_time, sizeof(smart_log->ctrl_busy_time), "ctrl_busy_time[16]");
+	printf("power_cycles                : %lld\n", *(qword *)smart_log->power_cycles);
+	print_buf(smart_log->power_cycles, sizeof(smart_log->power_cycles), "power_cycles[16]");
+	printf("power_on_hours              : %lld\n", *(qword *)smart_log->power_on_hours);
+	print_buf(smart_log->power_on_hours, sizeof(smart_log->power_on_hours), "power_on_hours[16]");
+	printf("unsafe_shutdowns            : %lld\n", *(qword *)smart_log->unsafe_shutdowns);
+	print_buf(smart_log->unsafe_shutdowns, sizeof(smart_log->unsafe_shutdowns), "unsafe_shutdowns[16]");
+	printf("media_errors                : %lld\n", *(qword *)smart_log->media_errors);
+	print_buf(smart_log->media_errors, sizeof(smart_log->media_errors), "media_errors[16]");
+	printf("num_err_log_entries         : %lld\n", *(qword *)smart_log->num_err_log_entries);
+	print_buf(smart_log->num_err_log_entries, sizeof(smart_log->num_err_log_entries), "num_err_log_entries[16]");
+	printf("warning_temp_time           : %d\n", smart_log->warning_temp_time);
+	printf("critical_comp_time          : %d\n", smart_log->critical_comp_time);
 	printf("Temperature Sensor\n");
-	printf("  temp_sensor[0]            : %d (%4d C)\n", smart_log->temp_sensor[0], smart_log->temp_sensor[0] - 273);
-	printf("  temp_sensor[1]            : %d (%4d C)\n", smart_log->temp_sensor[1], smart_log->temp_sensor[1] - 273);
-	printf("  temp_sensor[2]            : %d (%4d C)\n", smart_log->temp_sensor[2], smart_log->temp_sensor[2] - 273);
-	printf("  temp_sensor[3]            : %d\n", smart_log->temp_sensor[3]);
-	printf("  temp_sensor[4]            : %d\n", smart_log->temp_sensor[4]);
-	printf("  temp_sensor[5]            : %d\n", smart_log->temp_sensor[5]);
-	printf("  temp_sensor[6]            : %d\n", smart_log->temp_sensor[6]);
-	printf("  temp_sensor[7]            : %d\n", smart_log->temp_sensor[7]);
+	printf("  temp_sensor[0]            : %3d K (%3d C)\n", smart_log->temp_sensor[0], smart_log->temp_sensor[0] - 273);
+	printf("  temp_sensor[1]            : %3d K (%3d C)\n", smart_log->temp_sensor[1], smart_log->temp_sensor[1] - 273);
+	printf("  temp_sensor[2]            : %3d K (%3d C)\n", smart_log->temp_sensor[2], smart_log->temp_sensor[2] - 273);
+	// printf("  temp_sensor[3]            : %d\n", smart_log->temp_sensor[3]);
+	// printf("  temp_sensor[4]            : %d\n", smart_log->temp_sensor[4]);
+	// printf("  temp_sensor[5]            : %d\n", smart_log->temp_sensor[5]);
+	// printf("  temp_sensor[6]            : %d\n", smart_log->temp_sensor[6]);
+	// printf("  temp_sensor[7]            : %d\n", smart_log->temp_sensor[7]);
+	print_buf(smart_log->temp_sensor, sizeof(smart_log->temp_sensor), "temp_sensor[8]");
 	printf("thm_temp1_trans_count       : %x\n", smart_log->thm_temp1_trans_count);
 	printf("thm_temp2_trans_count       : %x\n", smart_log->thm_temp2_trans_count);
 	printf("thm_temp1_total_time        : %x\n", smart_log->thm_temp1_total_time);
