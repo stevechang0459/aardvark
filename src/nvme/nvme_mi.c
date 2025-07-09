@@ -17,6 +17,7 @@ struct nvme_mi_context {
 	uint8_t opc;
 	bool req_sent;
 	enum nvme_mi_config_id cfg_id;
+	enum nvme_mi_dtyp dtyp;
 };
 
 struct nvme_mi_context nvme_mi_ctx = {
@@ -97,6 +98,28 @@ int nvme_mi_send_admin_command(struct aa_args *args, uint8_t opc, union nvme_mi_
 int nvme_mi_request_message_handle(const union nvme_mi_res_msg *msg, uint16_t size)
 {
 	return 0;
+}
+
+void nvme_mi_show_mi_data_read(void *buf)
+{
+	switch (nvme_mi_ctx.dtyp) {
+	case nvme_mi_dtyp_subsys_info:
+		struct nvme_mi_read_nvm_ss_info *nvm_subsys_info = buf;
+		printf("NUMP                        : 0x%02x\n", nvm_subsys_info->nump);
+		printf("MJR                         : 0x%02x\n", nvm_subsys_info->mjr);
+		printf("MNR                         : 0x%02x\n", nvm_subsys_info->mnr);
+		break;
+	case nvme_mi_dtyp_port_info:
+		break;
+	case nvme_mi_dtyp_ctrl_list:
+		break;
+	case nvme_mi_dtyp_ctrl_info:
+		break;
+	case nvme_mi_dtyp_opt_cmd_support:
+		break;
+	case nvme_mi_dtyp_meb_support:
+		break;
+	}
 }
 
 void nvme_mi_show_subsystem_health_status(const struct nvme_mi_nvm_ss_health_status *nhsds)
@@ -342,6 +365,9 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 
 		void *buf = (void *)res_msg->res_data;
 		switch (nvme_mi_ctx.opc) {
+		case nvme_mi_mi_opcode_mi_data_read:
+			nvme_mi_show_mi_data_read(buf);
+			break;
 		case nvme_mi_mi_opcode_subsys_health_status_poll:
 			nvme_mi_show_subsystem_health_status(buf);
 			break;
@@ -418,6 +444,42 @@ void nvme_mi_print_msg_header(const union nvme_mi_req_msg *req_msg)
 	printf("\033[30;43mopc : 0x%08x\033[0m\n", req_msg->opc);
 	printf("\033[30;43mnmd0: 0x%08x\033[0m\n", req_msg->nmd0.value);
 	printf("\033[30;43mnmd1: 0x%08x\033[0m\n", req_msg->nmd1.value);
+}
+
+int nvme_mi_mi_data_read(struct aa_args *args, union nvme_mi_nmd0 nmd0, union nvme_mi_nmd1 nmd1)
+{
+	union nvme_mi_msg *msg = malloc(sizeof(*msg));
+	memset(msg, 0, sizeof(*msg));
+	union nvme_mi_req_msg *req_msg = (void *)msg;
+
+	req_msg->opc  = nvme_mi_mi_opcode_mi_data_read;
+	req_msg->nmd0 = nmd0;
+	req_msg->nmd1 = nmd1;
+	nvme_mi_print_msg_header(req_msg);
+
+	int ret = nvme_mi_send_mi_command(args, req_msg->opc, msg, sizeof(union nvme_mi_req_dw) - sizeof(union nvme_mi_msg_header));
+	if (ret < 0)
+		nvme_trace(ERROR, "nvme_mi_send_mi_command failed (%d)\n", ret);
+
+	free(msg);
+
+	return ret;
+}
+
+int nvme_mi_mi_data_read_nvm_subsys_info(struct aa_args *args)
+{
+	union nvme_mi_nmd0 nmd0 = {
+		.rnmds.dtyp = nvme_mi_dtyp_subsys_info,
+		.rnmds.portid = 0xFF,
+		.rnmds.ctrlid = 0xFFFF,
+	};
+	union nvme_mi_nmd1 nmd1 = {
+		.value = 0,
+	};
+
+	nvme_mi_ctx.dtyp = nmd0.rnmds.dtyp;
+
+	return nvme_mi_mi_data_read(args, nmd0, nmd1);
 }
 
 int nvme_mi_mi_subsystem_health_status_poll(struct aa_args *args, bool cs)
