@@ -812,6 +812,20 @@ int main(int argc, char *argv[])
 				goto out;
 			}
 
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_data_read_ctrl_list(&args, 0);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_data_read_ctrl_list (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_data_read_ctrl_list(&args, 1);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_data_read_ctrl_list (%d)\n", ret);
+				goto out;
+			}
+
 			printf("Round #%d done\n", ++count);
 #ifdef WIN32
 			Sleep(1000);

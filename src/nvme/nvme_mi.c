@@ -19,6 +19,7 @@ struct nvme_mi_context {
 	enum nvme_mi_config_id cfg_id;
 	enum nvme_mi_dtyp dtyp;
 	uint8_t portid;
+	uint8_t ctrlid;
 };
 
 struct nvme_mi_context nvme_mi_ctx = {
@@ -139,6 +140,11 @@ void nvme_mi_show_mi_data_read(void *buf)
 		}
 		break;
 	case nvme_mi_dtyp_ctrl_list:
+		struct nvme_ctrl_list *ctrl_list = buf;
+		printf("Number of Identifiers       : %d\n", ctrl_list->num);
+		for (int i = 0; i < ctrl_list->num; i++) {
+			printf("  Identifier[%4d]:         : 0x%04x\n", i, ctrl_list->identifier[i]);
+		}
 		break;
 	case nvme_mi_dtyp_ctrl_info:
 		break;
@@ -356,6 +362,9 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 			if (nvme_mi_ctx.dtyp == nvme_mi_dtyp_port_info) {
 				printf("  Port Identifier           : %d\n", nvme_mi_ctx.portid);
 			}
+			if (nvme_mi_ctx.dtyp == nvme_mi_dtyp_ctrl_list) {
+				printf("  Controller Identifier     : %d\n", nvme_mi_ctx.ctrlid);
+			}
 		}
 	}
 	break;
@@ -539,6 +548,22 @@ int nvme_mi_mi_data_read_port_info(struct aa_args *args, uint8_t portid)
 
 	nvme_mi_ctx.dtyp = nmd0.rnmds.dtyp;
 	nvme_mi_ctx.portid = portid;
+
+	return nvme_mi_mi_data_read(args, nmd0, nmd1);
+}
+
+int nvme_mi_mi_data_read_ctrl_list(struct aa_args *args, uint8_t ctrlid)
+{
+	union nvme_mi_nmd0 nmd0 = {
+		.rnmds.dtyp = nvme_mi_dtyp_ctrl_list,
+		.rnmds.ctrlid = ctrlid,
+	};
+	union nvme_mi_nmd1 nmd1 = {
+		.value = 0,
+	};
+
+	nvme_mi_ctx.dtyp = nmd0.rnmds.dtyp;
+	nvme_mi_ctx.ctrlid = ctrlid;
 
 	return nvme_mi_mi_data_read(args, nmd0, nmd1);
 }

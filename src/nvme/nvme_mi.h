@@ -685,5 +685,6 @@ int nvme_mi_mi_config_set_hsc(struct aa_args *args, union nmd1_config_hsc hsc);
 int nvme_mi_mi_config_set_mtus(struct aa_args *args, uint8_t port_id, union nmd1_config_mtus mtus);
 int nvme_mi_mi_data_read_nvm_subsys_info(struct aa_args *args);
 int nvme_mi_mi_data_read_port_info(struct aa_args *args, uint8_t portid);
+int nvme_mi_mi_data_read_ctrl_list(struct aa_args *args, uint8_t ctrlid);
 
 #endif // NVME_MI_H
