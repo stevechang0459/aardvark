@@ -37,9 +37,23 @@
 //      NMIMT_MAX,
 // };
 
-enum nvme_mi_port_id {
-	NVME_MI_PORT_ID_PCIE = 0,
-	NVME_MI_PORT_ID_SMBUS = 1,
+enum shutdown_type
+{
+    SHUTDOWN_TYPE_NORMAL = 0,           // Normal NVM Subsystem Shutdown
+    SHUTDOWN_TYPE_ABRUPT = 1,           // Abrupt NVM Subsystem Shutdown
+};
+
+enum nvme_mi_port_id
+{
+    NVME_MI_PORT_ID_PCIE = 0,
+    NVME_MI_PORT_ID_SMBUS = 1,
+};
+
+enum nvme_mi_port_type
+{
+    PORT_TYPE_INACTIVE = 0,
+    PORT_TYPE_PCIE = 1,
+    PORT_TYPE_SMBUS,
 };
 
 enum nvme_mi_msg_ror {
@@ -670,5 +684,6 @@ int nvme_mi_mi_config_set_sif(struct aa_args *args, uint8_t port_id, uint8_t fre
 int nvme_mi_mi_config_set_hsc(struct aa_args *args, union nmd1_config_hsc hsc);
 int nvme_mi_mi_config_set_mtus(struct aa_args *args, uint8_t port_id, union nmd1_config_mtus mtus);
 int nvme_mi_mi_data_read_nvm_subsys_info(struct aa_args *args);
+int nvme_mi_mi_data_read_port_info(struct aa_args *args, uint8_t portid);
 
 #endif // NVME_MI_H

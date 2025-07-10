@@ -18,6 +18,7 @@ struct nvme_mi_context {
 	bool req_sent;
 	enum nvme_mi_config_id cfg_id;
 	enum nvme_mi_dtyp dtyp;
+	uint8_t portid;
 };
 
 struct nvme_mi_context nvme_mi_ctx = {
@@ -110,6 +111,32 @@ void nvme_mi_show_mi_data_read(void *buf)
 		printf("MNR                         : 0x%02x\n", nvm_subsys_info->mnr);
 		break;
 	case nvme_mi_dtyp_port_info:
+		struct nvme_mi_read_port_info *port_info = buf;
+		static const char *portt[256] = {
+			[PORT_TYPE_INACTIVE] = "Inactive",
+			[PORT_TYPE_PCIE] = "PCIe",
+			[PORT_TYPE_SMBUS] = "SMBus",
+			[3 ... 0xFF] = "Reserved"
+		};
+
+		printf("Port Type                   : %dh (%s)\n", port_info->portt, portt[port_info->portt]);
+		printf("Port Capabilities           : %d\n", port_info->rsvd1);
+		printf("MTUS                        : %d\n", port_info->mmctptus);
+		printf("MEBS                        : %d\n", port_info->meb);
+		if (port_info->portt == PORT_TYPE_PCIE) {
+			printf("PCIe Maximum Payload Size   : %dh\n", port_info->pcie.mps);
+			printf("PCIe Supported Link Speeds  : 0x%02x\n", port_info->pcie.sls);
+			printf("PCIe Current Link Speed     : %d\n", port_info->pcie.cls);
+			printf("PCIe Maximum Link Width     : %dh\n", port_info->pcie.mlw);
+			printf("PCIe Negotiated Link Width  : %d\n", port_info->pcie.nlw);
+			printf("PCIe Port Number            : %d\n", port_info->pcie.pn);
+		} else if (port_info->portt == PORT_TYPE_SMBUS) {			
+			printf("Current VPD SMBus Address   : %02x\n", port_info->smb.vpd_addr);
+			printf("Maximum VPD SMBus Frequency : %dh\n", port_info->smb.mvpd_freq);
+			printf("Current MEP SMBus Address   : %02x\n", port_info->smb.mme_addr);
+			printf("Maximum MEP SMBus Frequency : %dh\n", port_info->smb.mme_freq);
+			printf("NVMe Basic Management       : %d\n", port_info->smb.nvmebm);
+		}
 		break;
 	case nvme_mi_dtyp_ctrl_list:
 		break;
@@ -304,15 +331,32 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 			[nvme_mi_mi_opcode_configuration_get] = "Configuration Get",
 		};
 		printf("Opcode                      : %02Xh (%s)\n", nvme_mi_ctx.opc, opc[nvme_mi_ctx.opc]);
-		static const char *cfg_id[256] = {
-			[0] = "Reserved",
-			[NVME_MI_CONFIG_SMBUS_FREQ] = "SMBus/I2C Frequency",
-			[NVME_MI_CONFIG_HEALTH_STATUS_CHANGE] = "Health Status Change",
-			[NVME_MI_CONFIG_MCTP_MTU] = "MCTP Transmission Unit Size",
-			[0x04 ... 0xBF] = "Reserved",
-			[0xC0 ... 0xFF] = "Vendor Specific"
-		};
-		printf("  Configuration Identifier  : %02Xh (%s)\n", nvme_mi_ctx.cfg_id, cfg_id[nvme_mi_ctx.cfg_id]);
+		if (nvme_mi_ctx.opc == nvme_mi_mi_opcode_configuration_set || nvme_mi_ctx.opc == nvme_mi_mi_opcode_configuration_get) {
+			static const char *cfg_id[256] = {
+				[0] = "Reserved",
+				[NVME_MI_CONFIG_SMBUS_FREQ] = "SMBus/I2C Frequency",
+				[NVME_MI_CONFIG_HEALTH_STATUS_CHANGE] = "Health Status Change",
+				[NVME_MI_CONFIG_MCTP_MTU] = "MCTP Transmission Unit Size",
+				[0x04 ... 0xBF] = "Reserved",
+				[0xC0 ... 0xFF] = "Vendor Specific"
+			};
+			printf("  Configuration Identifier  : %02Xh (%s)\n", nvme_mi_ctx.cfg_id, cfg_id[nvme_mi_ctx.cfg_id]);
+		}
+		if (nvme_mi_ctx.opc == nvme_mi_mi_opcode_mi_data_read) {
+			static const char *dtyp[256] = {
+				[nvme_mi_dtyp_subsys_info] = "NVM Subsystem Information",
+				[nvme_mi_dtyp_port_info] = "Port Information",
+				[nvme_mi_dtyp_ctrl_list] = "Controller List",
+				[nvme_mi_dtyp_ctrl_info] = "Controller Information",
+				[nvme_mi_dtyp_opt_cmd_support] = "Optionally Supported Command List",
+				[nvme_mi_dtyp_meb_support] = "Management Endpoint Buffer Command Support List",
+				[0x06 ... 0xFF] = "Reserved"
+			};
+			printf("  Data Structure Type       : %02Xh (%s)\n", nvme_mi_ctx.dtyp, dtyp[nvme_mi_ctx.dtyp]);
+			if (nvme_mi_ctx.dtyp == nvme_mi_dtyp_port_info) {
+				printf("  Port Identifier           : %d\n", nvme_mi_ctx.portid);
+			}
+		}
 	}
 	break;
 	case NVME_MI_MT_ADMIN: {
@@ -478,6 +522,23 @@ int nvme_mi_mi_data_read_nvm_subsys_info(struct aa_args *args)
 	};
 
 	nvme_mi_ctx.dtyp = nmd0.rnmds.dtyp;
+
+	return nvme_mi_mi_data_read(args, nmd0, nmd1);
+}
+
+int nvme_mi_mi_data_read_port_info(struct aa_args *args, uint8_t portid)
+{
+	union nvme_mi_nmd0 nmd0 = {
+		.rnmds.dtyp = nvme_mi_dtyp_port_info,
+		.rnmds.portid = portid,
+		.rnmds.ctrlid = 0xFFFF,
+	};
+	union nvme_mi_nmd1 nmd1 = {
+		.value = 0,
+	};
+
+	nvme_mi_ctx.dtyp = nmd0.rnmds.dtyp;
+	nvme_mi_ctx.portid = portid;
 
 	return nvme_mi_mi_data_read(args, nmd0, nmd1);
 }

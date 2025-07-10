@@ -798,6 +798,20 @@ int main(int argc, char *argv[])
 				goto out;
 			}
 
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_data_read_port_info(&args, NVME_MI_PORT_ID_PCIE);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_data_read_port_info (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_data_read_port_info(&args, NVME_MI_PORT_ID_SMBUS);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_data_read_port_info (%d)\n", ret);
+				goto out;
+			}
+
 			printf("Round #%d done\n", ++count);
 #ifdef WIN32
 			Sleep(1000);
