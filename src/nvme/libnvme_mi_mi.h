@@ -225,6 +225,14 @@ enum nvme_mi_mi_opcode {
 	nvme_mi_mi_opcode_controller_health_status_poll = 0x02,
 	nvme_mi_mi_opcode_configuration_set = 0x03,
 	nvme_mi_mi_opcode_configuration_get = 0x04,
+	nvme_mi_mi_opcode_vpd_read = 0x05,
+	nvme_mi_mi_opcode_vpd_write = 0x06,
+	nvme_mi_mi_opcode_reset = 0x07,
+	nvme_mi_mi_opcode_ses_receive = 0x08,
+	nvme_mi_mi_opcode_ses_send = 0x09,
+	nvme_mi_mi_opcode_meb_read = 0x0a,
+	nvme_mi_mi_opcode_meb_write = 0x0b,
+	nvme_mi_mi_opcode_shutdown = 0x0c,
 };
 
 /**

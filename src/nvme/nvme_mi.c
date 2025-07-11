@@ -22,6 +22,82 @@ struct nvme_mi_context {
 	uint8_t ctrlid;
 };
 
+static const char *_nmimt[NVNE_MI_MT_MAX] = {
+	"Control Primitive",
+	"NVMe-MI Command",
+	"NVMe Admin Command",
+	"Reserved",
+	"PCIe Command",
+	"Asynchronous Event"
+};
+
+static const char *_adm_opc[] = {
+	[nvme_admin_delete_sq]            = "nvme_admin_delete_sq",
+	[nvme_admin_create_sq]            = "nvme_admin_create_sq",
+	[nvme_admin_get_log_page]         = "nvme_admin_get_log_page",
+	[nvme_admin_delete_cq]            = "nvme_admin_delete_cq",
+	[nvme_admin_create_cq]            = "nvme_admin_create_cq",
+	[nvme_admin_identify]             = "nvme_admin_identify",
+	[nvme_admin_abort_cmd]            = "nvme_admin_abort_cmd",
+	[nvme_admin_set_features]         = "nvme_admin_set_features",
+	[nvme_admin_get_features]         = "nvme_admin_get_features",
+	[nvme_admin_async_event]          = "nvme_admin_async_event",
+	[nvme_admin_ns_mgmt]              = "nvme_admin_ns_mgmt",
+	[nvme_admin_fw_commit]            = "nvme_admin_fw_commit",
+	[nvme_admin_fw_download]          = "nvme_admin_fw_download",
+	[nvme_admin_dev_self_test]        = "nvme_admin_dev_self_test",
+	[nvme_admin_ns_attach]            = "nvme_admin_ns_attach",
+	[nvme_admin_keep_alive]           = "nvme_admin_keep_alive",
+	[nvme_admin_directive_send]       = "nvme_admin_directive_send",
+	[nvme_admin_directive_recv]       = "nvme_admin_directive_recv",
+	[nvme_admin_virtual_mgmt]         = "nvme_admin_virtual_mgmt",
+	[nvme_admin_nvme_mi_send]         = "nvme_admin_nvme_mi_send",
+	[nvme_admin_nvme_mi_recv]         = "nvme_admin_nvme_mi_recv",
+	[nvme_admin_capacity_mgmt]        = "nvme_admin_capacity_mgmt",
+	[nvme_admin_discovery_info_mgmt]  = "nvme_admin_discovery_info_mgmt",
+	[nvme_admin_fabric_zoning_recv]   = "nvme_admin_fabric_zoning_recv",
+	[nvme_admin_lockdown]             = "nvme_admin_lockdown",
+	[nvme_admin_fabric_zoning_lookup] = "nvme_admin_fabric_zoning_lookup",
+	[nvme_admin_clear_export_nvm_res] = "nvme_admin_clear_export_nvm_res",
+	[nvme_admin_fabric_zoning_send]   = "nvme_admin_fabric_zoning_send",
+	[nvme_admin_create_export_nvms]   = "nvme_admin_create_export_nvms",
+	[nvme_admin_manage_export_nvms]   = "nvme_admin_manage_export_nvms",
+	[nvme_admin_manage_export_ns]     = "nvme_admin_manage_export_ns",
+	[nvme_admin_manage_export_port]   = "nvme_admin_manage_export_port",
+	[nvme_admin_send_disc_log_page]   = "nvme_admin_send_disc_log_page",
+	[nvme_admin_track_send]           = "nvme_admin_track_send",
+	[nvme_admin_track_receive]        = "nvme_admin_track_receive",
+	[nvme_admin_migration_send]       = "nvme_admin_migration_send",
+	[nvme_admin_migration_receive]    = "nvme_admin_migration_receive",
+	[nvme_admin_ctrl_data_queue]      = "nvme_admin_ctrl_data_queue",
+	[nvme_admin_dbbuf]                = "nvme_admin_dbbuf",
+	[nvme_admin_fabrics]              = "nvme_admin_fabrics",
+	[nvme_admin_format_nvm]           = "nvme_admin_format_nvm",
+	[nvme_admin_security_send]        = "nvme_admin_security_send",
+	[nvme_admin_security_recv]        = "nvme_admin_security_recv",
+	[nvme_admin_sanitize_nvm]         = "nvme_admin_sanitize_nvm",
+	[nvme_admin_load_program]         = "nvme_admin_load_program",
+	[nvme_admin_get_lba_status]       = "nvme_admin_get_lba_status",
+	[nvme_admin_program_act_mgmt]     = "nvme_admin_program_act_mgmt",
+	[nvme_admin_mem_range_set_mgmt]   = "nvme_admin_mem_range_set_mgmt",
+};
+
+const char *_mi_opc [256] = {
+	[nvme_mi_mi_opcode_mi_data_read] = "Read NVMe-MI Data Structure",
+	[nvme_mi_mi_opcode_subsys_health_status_poll] = "NVM Subsystem Health Status Poll",
+	[nvme_mi_mi_opcode_controller_health_status_poll] = "Controller Health Status Poll",
+	[nvme_mi_mi_opcode_configuration_set] = "Configuration Set",
+	[nvme_mi_mi_opcode_configuration_get] = "Configuration Get",
+	[nvme_mi_mi_opcode_vpd_read] = "VPD Read",
+	[nvme_mi_mi_opcode_vpd_write] = "VPD Write",
+	[nvme_mi_mi_opcode_reset] = "Reset",
+	[nvme_mi_mi_opcode_ses_receive] = "SES Receive",
+	[nvme_mi_mi_opcode_ses_send] = "SES Send",
+	[nvme_mi_mi_opcode_meb_read] = "Management Endpoint Buffer Read",
+	[nvme_mi_mi_opcode_meb_write] = "Management Endpoint Buffer Write",
+	[nvme_mi_mi_opcode_shutdown] = "Shutdown",
+};
+
 struct nvme_mi_context nvme_mi_ctx = {
 	.nmimt = NVNE_MI_MT_MAX,
 	.opc = 0xFF,
@@ -147,6 +223,14 @@ void nvme_mi_show_mi_data_read(void *buf)
 		}
 		break;
 	case nvme_mi_dtyp_ctrl_info:
+		struct nvme_mi_read_ctrl_info *ctrl_info = buf;
+		printf("Port Identifier             : %d\n", ctrl_info->portid);
+		printf("PRII                        : %d\n", ctrl_info->prii);
+		printf("PRI                         : %d\n", ctrl_info->pri);
+		printf("PCI Vendor ID               : %x\n", ctrl_info->vid);
+		printf("PCI Device ID               : %x\n", ctrl_info->did);
+		printf("PCI Subsystem Vendor ID     : %x\n", ctrl_info->ssvid);
+		printf("PCI Subsystem Device ID     : %x\n", ctrl_info->ssid);
 		break;
 	case nvme_mi_dtyp_opt_cmd_support:
 		break;
@@ -318,25 +402,10 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 	printf("Message Type                : %d (%s)\n", res_msg->nmh.mt, mt[res_msg->nmh.mt]);
 	printf("Integrity Check             : %d\n", res_msg->nmh.ic);
 	printf("CSI                         : %d\n", res_msg->nmh.csi);
-	const char *nmimt[NVNE_MI_MT_MAX] = {
-		"Control Primitive",
-		"NVMe-MI Command",
-		"NVMe Admin Command",
-		"Reserved",
-		"PCIe Command",
-		"Asynchronous Event"
-	};
-	printf("NVMe-MI Message Type        : %d (%s)\n", res_msg->nmh.nmimt, nmimt[res_msg->nmh.nmimt]);
+	printf("NVMe-MI Message Type        : %d (%s)\n", res_msg->nmh.nmimt, _nmimt[res_msg->nmh.nmimt]);
 	switch (res_msg->nmh.nmimt) {
 	case NVME_MI_MT_MI: {
-		const char *opc [256] = {
-			[nvme_mi_mi_opcode_mi_data_read] = "Read NVMe-MI Data Structure",
-			[nvme_mi_mi_opcode_subsys_health_status_poll] = "NVM Subsystem Health Status Poll",
-			[nvme_mi_mi_opcode_controller_health_status_poll] = "Controller Health Status Poll",
-			[nvme_mi_mi_opcode_configuration_set] = "Configuration Set",
-			[nvme_mi_mi_opcode_configuration_get] = "Configuration Get",
-		};
-		printf("Opcode                      : %02Xh (%s)\n", nvme_mi_ctx.opc, opc[nvme_mi_ctx.opc]);
+		printf("Opcode                      : %02Xh (%s)\n", nvme_mi_ctx.opc, _mi_opc[nvme_mi_ctx.opc]);
 		if (nvme_mi_ctx.opc == nvme_mi_mi_opcode_configuration_set || nvme_mi_ctx.opc == nvme_mi_mi_opcode_configuration_get) {
 			static const char *cfg_id[256] = {
 				[0] = "Reserved",
@@ -369,12 +438,7 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 	}
 	break;
 	case NVME_MI_MT_ADMIN: {
-		const char *opc [256] = {
-			[nvme_admin_get_log_page] = "Get Log Page",
-			[nvme_admin_identify] = "Identify",
-			[nvme_admin_get_features] = "Get Features",
-		};
-		printf("Opcode                      : %02Xh (%s)\n", nvme_mi_ctx.opc, opc[nvme_mi_ctx.opc]);
+		printf("Opcode                      : %02Xh (%s)\n", nvme_mi_ctx.opc, _adm_opc[nvme_mi_ctx.opc]);
 	}
 	break;
 	default:
@@ -556,6 +620,22 @@ int nvme_mi_mi_data_read_ctrl_list(struct aa_args *args, uint8_t ctrlid)
 {
 	union nvme_mi_nmd0 nmd0 = {
 		.rnmds.dtyp = nvme_mi_dtyp_ctrl_list,
+		.rnmds.ctrlid = ctrlid,
+	};
+	union nvme_mi_nmd1 nmd1 = {
+		.value = 0,
+	};
+
+	nvme_mi_ctx.dtyp = nmd0.rnmds.dtyp;
+	nvme_mi_ctx.ctrlid = ctrlid;
+
+	return nvme_mi_mi_data_read(args, nmd0, nmd1);
+}
+
+int nvme_mi_mi_data_read_ctrl_info(struct aa_args *args, uint8_t ctrlid)
+{
+	union nvme_mi_nmd0 nmd0 = {
+		.rnmds.dtyp = nvme_mi_dtyp_ctrl_info,
 		.rnmds.ctrlid = ctrlid,
 	};
 	union nvme_mi_nmd1 nmd1 = {
