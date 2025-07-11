@@ -14,12 +14,16 @@
 
 struct nvme_mi_context {
 	enum nvme_mi_message_type nmimt;
+	union nvme_mi_resp nmresp;
 	uint8_t opc;
 	bool req_sent;
 	enum nvme_mi_config_id cfg_id;
 	enum nvme_mi_dtyp dtyp;
 	uint8_t portid;
 	uint8_t ctrlid;
+	uint8_t vpd[256];
+	uint16_t dofst;
+	uint16_t dlen;
 };
 
 static const char *_nmimt[NVNE_MI_MT_MAX] = {
@@ -386,6 +390,90 @@ void nvme_mi_show_configuration_get(union nvme_mi_resp nmresp)
 	}
 }
 
+void nvme_mi_show_vpd_read(void *buf, uint16_t size)
+{
+	struct nvme_mi_vpd_hdr *vpd_hdr = buf;
+	printf("Common Header\n");
+	printf("  IPMIVER                   : %d\n", vpd_hdr->ipmiver);
+	printf("  IUAOFF                    : %d\n", vpd_hdr->iuaoff << 3);
+	printf("  CIAOFF                    : %d\n", vpd_hdr->ciaoff << 3);
+	printf("  BIAOFF                    : %d\n", vpd_hdr->biaoff << 3);
+	printf("  PIAOFF                    : %d\n", vpd_hdr->piaoff << 3);
+	printf("  MRIOFF                    : %d\n", vpd_hdr->mrioff << 3);
+	printf("  CHCHK                     : %d\n", vpd_hdr->chchk);
+
+	// TBD
+	if (vpd_hdr->iuaoff)
+	{
+
+	}
+	
+	if (vpd_hdr->ciaoff)
+	{
+		
+	}
+	
+	if (vpd_hdr->biaoff)
+	{
+		
+	}
+	
+	if (vpd_hdr->piaoff)
+	{
+
+	}
+
+	if (vpd_hdr->mrioff)
+	{
+		static const char *_type[256] = {
+			[0xB] = "NVMe Record Type ID",
+			[0xC] = "NVMe PCIe Port Record Type ID",
+			[0xD] = "Topology Record Type ID",
+		};
+		struct nvme_mi_vpd_mr_common *vpd_mr = buf + (vpd_hdr->mrioff << 3);
+		printf("NVMe MultiRecord Area\n");
+		printf("  Type                      : %d (%s)\n", vpd_mr->type, _type[vpd_mr->type]);
+		printf("  Record Format             : %d\n", vpd_mr->rf);
+		printf("  Record Length             : %d\n", vpd_mr->rlen);
+		printf("  Record Checksum           : %d\n", vpd_mr->rchksum);
+		printf("  Header Checksum           : %d\n", vpd_mr->hchksum);
+		printf("  NMRAVN                    : %d\n", vpd_mr->nmra.nmravn);
+		printf("  Form Factor               : %d\n", vpd_mr->nmra.ff);
+		
+		vpd_mr = (void *)vpd_mr + 5 + sizeof(struct nvme_mi_vpd_mra);
+		printf("NVMe PCIe Port MultiRecord Area\n");
+		printf("  Type                      : %d (%s)\n", vpd_mr->type, _type[vpd_mr->type]);
+		printf("  Record Format             : %d\n", vpd_mr->rf);
+		printf("  Record Length             : %d\n", vpd_mr->rlen);
+		printf("  Record Checksum           : %d\n", vpd_mr->rchksum);
+		printf("  Header Checksum           : %d\n", vpd_mr->hchksum);
+		printf("  NPPMRAVN                  : %d\n", vpd_mr->ppmra.nppmravn);
+		printf("  PCIe Port Number          : %d\n", vpd_mr->ppmra.pn);
+		printf("  Port Information          : %d\n", vpd_mr->ppmra.ppi);
+		printf("  PCIe Link Speed           : %d\n", vpd_mr->ppmra.ls);
+		printf("  PCIe Maximum Link Width   : %x\n", vpd_mr->ppmra.mlw);
+		printf("  MCTP Support              : %d\n", vpd_mr->ppmra.mctp);
+		printf("  Ref Clk Capability        : %d\n", vpd_mr->ppmra.refccap);
+		printf("  Port Identifier           : %d\n", vpd_mr->ppmra.pi);
+		
+		vpd_mr = (void *)vpd_mr + 5 + sizeof(struct nvme_mi_vpd_ppmra);
+		printf("Topology MultiRecord Area\n");
+		printf("  Type                      : %d (%s)\n", vpd_mr->type, _type[vpd_mr->type]);
+		printf("  Record Format             : %d\n", vpd_mr->rf);
+		printf("  Record Length             : %d\n", vpd_mr->rlen);
+		printf("  Record Checksum           : %d\n", vpd_mr->rchksum);
+		printf("  Header Checksum           : %d\n", vpd_mr->hchksum);
+		printf("  Version Number            : %d\n", vpd_mr->tmra.vn);
+		printf("  Element Count (N)         : %d\n", vpd_mr->tmra.ec);
+	}
+
+	// TBD
+	print_buf(buf, size, "VPD Read");
+	if (size != nvme_mi_ctx.dlen)
+		nvme_trace(WARN, "dlen mismatch: size(%d) != dlen(%d)\n", size, nvme_mi_ctx.dlen);
+	memcpy(nvme_mi_ctx.vpd + nvme_mi_ctx.dofst, buf, size);
+}
+
 int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t size)
 {
 	if (!nvme_mi_ctx.req_sent)
@@ -489,8 +577,11 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 
 	switch (nvme_mi_ctx.nmimt) {
 	case NVME_MI_MT_MI: {
-		if (res_msg->nmresp.status)
+		if (res_msg->nmresp.status) {
+			nvme_mi_ctx.nmresp.status = res_msg->nmresp.status;
 			break;
+		}
+		nvme_mi_ctx.nmresp.status = NVME_MI_RESP_SUCCESS;
 
 		void *buf = (void *)res_msg->res_data;
 		switch (nvme_mi_ctx.opc) {
@@ -511,6 +602,9 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 			break;
 		case nvme_mi_mi_opcode_configuration_get:
 			nvme_mi_show_configuration_get(res_msg->nmresp);
+			break;
+		case nvme_mi_mi_opcode_vpd_read:
+			nvme_mi_show_vpd_read(buf, size - sizeof(res_msg->nmh) - sizeof(res_msg->nmresp));
 			break;
 		}
 	}
@@ -696,6 +790,38 @@ int nvme_mi_mi_subsystem_health_status_poll(struct aa_args *args, bool cs)
 	int ret = nvme_mi_send_mi_command(args, req_msg->opc, msg, sizeof(union nvme_mi_req_dw) - sizeof(union nvme_mi_msg_header));
 	if (ret < 0)
 		nvme_trace(ERROR, "nvme_mi_send_mi_command failed (%d)\n", ret);
+
+	free(msg);
+
+	return ret;
+}
+
+int nvme_mi_mi_vpd_read(struct aa_args *args, uint16_t dofst, uint16_t dlen, void *buf)
+{
+	union nvme_mi_nmd0 nmd0 = {
+		.vpdr.dofst = dofst,
+	};
+	union nvme_mi_nmd1 nmd1 = {
+		.vpdr.dlen = dlen,
+	};
+	memset(nvme_mi_ctx.vpd, 0, sizeof(nvme_mi_ctx.vpd));
+	nvme_mi_ctx.dofst = dofst;
+	nvme_mi_ctx.dlen = dlen;
+	union nvme_mi_msg *msg = malloc(sizeof(*msg));
+	memset(msg, 0, sizeof(*msg));
+	union nvme_mi_req_msg *req_msg = (void *)msg;
+
+	req_msg->opc  = nvme_mi_mi_opcode_vpd_read;
+	req_msg->nmd0 = nmd0;
+	req_msg->nmd1 = nmd1;
+	nvme_mi_print_msg_header(req_msg);
+
+	int ret = nvme_mi_send_mi_command(args, req_msg->opc, msg, sizeof(union nvme_mi_req_dw) - sizeof(union nvme_mi_msg_header));
+	if (ret < 0)
+		nvme_trace(ERROR, "nvme_mi_mi_vpd_read failed (%d)\n", ret);
+
+	if (!nvme_mi_ctx.nmresp.status && buf)
+		memcpy(buf, nvme_mi_ctx.vpd + dofst, dlen);
 
 	free(msg);
 

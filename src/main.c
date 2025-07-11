@@ -868,6 +868,28 @@ int main(int argc, char *argv[])
 				goto out;
 			}
 
+			char vpd[256];
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_vpd_read(&args, 0, 256, vpd);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_vpd_read(&args, 1, 256, vpd);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_vpd_read(&args, 0, 257, vpd);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
+				goto out;
+			}
+
 			printf("Round #%d done\n", ++count);
 #ifdef WIN32
 			Sleep(1000);

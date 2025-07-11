@@ -7479,8 +7479,8 @@ struct nvme_mi_vpd_mra {
 	__u8    i12vapsr;
 	__u8    m12vapsr;
 	__u8    mtl;
-	__u8    tnvmcap[16];
-	__u8    rsvd37[27];
+	__u8    tnvmcap[13];
+	// __u8    rsvd37[27];
 };
 
 /**
@@ -7504,7 +7504,7 @@ struct nvme_mi_vpd_ppmra {
 	__u8    mctp;
 	__u8    refccap;
 	__u8    pi;
-	__u8    rsvd13[3];
+	// __u8    rsvd13[3];
 };
 
 /**

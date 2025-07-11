@@ -688,5 +688,6 @@ int nvme_mi_mi_data_read_port_info(struct aa_args *args, uint8_t portid);
 int nvme_mi_mi_data_read_ctrl_list(struct aa_args *args, uint8_t ctrlid);
 int nvme_mi_mi_data_read_ctrl_info(struct aa_args *args, uint8_t ctrlid);
 int nvme_mi_mi_data_read_opt_cmd_support(struct aa_args *args, uint8_t ctrlid, uint8_t iocsi);
+int nvme_mi_mi_vpd_read(struct aa_args *args, uint16_t dofst, uint16_t dlen, void *buf);
 
 #endif // NVME_MI_H
