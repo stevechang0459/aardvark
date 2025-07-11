@@ -233,6 +233,18 @@ void nvme_mi_show_mi_data_read(void *buf)
 		printf("PCI Subsystem Device ID     : %x\n", ctrl_info->ssid);
 		break;
 	case nvme_mi_dtyp_opt_cmd_support:
+		struct nvme_mi_read_sc_list *oscl = buf;
+		printf("Number of Commands          : %d\n", oscl->numcmd);
+		for (int i = 0; i < oscl->numcmd; i++) {
+			uint8_t nmimt = oscl->cmds[i].type >> 3;
+			uint8_t opc = oscl->cmds[i].opc;
+			printf("  [%d] NMIMT                 : %d (%s)\n", i, nmimt, _nmimt[nmimt]);
+			if (nmimt == NVME_MI_MT_ADMIN) {
+				printf("  [%d] Opcode:               : %d (%s)\n", i, opc, _adm_opc[opc]);
+			} else if (nmimt == NVME_MI_MT_MI) {
+				printf("  [%d] Opcode:               : %d (%s)\n", i, opc, _mi_opc[opc]);
+			}
+		}
 		break;
 	case nvme_mi_dtyp_meb_support:
 		break;
@@ -640,6 +652,22 @@ int nvme_mi_mi_data_read_ctrl_info(struct aa_args *args, uint8_t ctrlid)
 	};
 	union nvme_mi_nmd1 nmd1 = {
 		.value = 0,
+	};
+
+	nvme_mi_ctx.dtyp = nmd0.rnmds.dtyp;
+	nvme_mi_ctx.ctrlid = ctrlid;
+
+	return nvme_mi_mi_data_read(args, nmd0, nmd1);
+}
+
+int nvme_mi_mi_data_read_opt_cmd_support(struct aa_args *args, uint8_t ctrlid, uint8_t iocsi)
+{
+	union nvme_mi_nmd0 nmd0 = {
+		.rnmds.dtyp = nvme_mi_dtyp_opt_cmd_support,
+		.rnmds.ctrlid = ctrlid,
+	};
+	union nvme_mi_nmd1 nmd1 = {
+		.rnmds.iocsi = iocsi,
 	};
 
 	nvme_mi_ctx.dtyp = nmd0.rnmds.dtyp;
