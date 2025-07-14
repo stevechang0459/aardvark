@@ -828,6 +828,34 @@ int nvme_mi_mi_vpd_read(struct aa_args *args, uint16_t dofst, uint16_t dlen, voi
 	return ret;
 }
 
+int nvme_mi_mi_vpd_write(struct aa_args *args, uint16_t dofst, uint16_t dlen, void *buf)
+{
+	union nvme_mi_nmd0 nmd0 = {
+		.vpdr.dofst = dofst,
+	};
+	union nvme_mi_nmd1 nmd1 = {
+		.vpdr.dlen = dlen,
+	};
+	union nvme_mi_msg *msg = malloc(sizeof(*msg));
+	memset(msg, 0, sizeof(*msg));
+	union nvme_mi_req_msg *req_msg = (void *)msg;
+
+	req_msg->opc  = nvme_mi_mi_opcode_vpd_write;
+	req_msg->nmd0 = nmd0;
+	req_msg->nmd1 = nmd1;
+	memcpy(req_msg->req_data, buf, dlen);
+
+	print_buf(req_msg, dlen + sizeof(union nvme_mi_req_dw), "VPD Write");
+
+	int ret = nvme_mi_send_mi_command(args, req_msg->opc, msg, dlen + sizeof(union nvme_mi_req_dw) - sizeof(union nvme_mi_msg_header));
+	if (ret < 0)
+		nvme_trace(ERROR, "nvme_mi_mi_vpd_read failed (%d)\n", ret);
+
+	free(msg);
+
+	return ret;
+}
+
 int nvme_mi_mi_controller_health_status_poll(struct aa_args *args, bool ccf)
 {
 	union nvme_mi_nmd0 nmd0 = {

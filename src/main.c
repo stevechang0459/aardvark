@@ -869,6 +869,8 @@ int main(int argc, char *argv[])
 			}
 
 			char vpd[256];
+			memset(vpd, 0, sizeof(vpd));
+
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_vpd_read(&args, 0, 256, vpd);
 			if (ret) {
@@ -885,6 +887,29 @@ int main(int argc, char *argv[])
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_vpd_read(&args, 0, 257, vpd);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_vpd_write(&args, 0, 128, vpd);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_vpd_write (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_vpd_write(&args, 128, 128, vpd + 128);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_vpd_write (%d)\n", ret);
+				goto out;
+			}
+
+			memset(vpd, 0, sizeof(vpd));
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_vpd_read(&args, 0, 256, vpd);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
 				goto out;
