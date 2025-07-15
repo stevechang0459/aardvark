@@ -39,7 +39,7 @@ try:
 #ifdef WIN32
 		Sleep(500);
 #else
-		sleep(500 * 1000);
+		usleep(500 * 1000);
 #endif
 
 		ret = nvme_get_features_power_mgmt(args, NVME_GET_FEATURES_SEL_CURRENT);
@@ -183,7 +183,7 @@ void *nvme_transmit_worker2(void *args)
 		}
 
 		printf("[T2] Transmit round #%d done\n", ++count);
-		sleep(2);
+		usleep(2000 * 1000);
 	}
 	return NULL;
 }

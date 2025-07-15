@@ -242,7 +242,7 @@ try:
 #ifdef WIN32
 			Sleep(100);
 #else
-			sleep(100 * 1000);
+			usleep(100 * 1000);
 #endif
 			goto try;
 		}

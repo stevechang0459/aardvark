@@ -919,7 +919,7 @@ int main(int argc, char *argv[])
 #ifdef WIN32
 			Sleep(1000);
 #else
-			sleep(1000 * 1000);
+			usleep(1000 * 1000);
 #endif
 		}
 #else
