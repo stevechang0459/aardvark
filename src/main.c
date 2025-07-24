@@ -679,6 +679,37 @@ int main(int argc, char *argv[])
 		int count = 0;
 		while (1) {
 			args.csi = 0;
+
+			union temp_thresh
+			{
+				struct
+				{
+					uint32_t tmpth  : 16;
+					uint32_t tmpsel : 4;
+					uint32_t thsel  : 2;
+					uint32_t rsvd   : 10;
+				};
+				uint32_t value;
+			};
+
+			union temp_thresh tt = {
+				.value = 0x137
+			};
+			args.csi = !args.csi;
+			ret = nvme_set_features_temp_thresh(&args, tt.value, 0);
+			if (ret) {
+				main_trace(ERROR, "nvme_set_features_temp_thresh (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_features_temp_thresh(&args, NVME_GET_FEATURES_SEL_CURRENT);
+			if (ret) {
+				main_trace(ERROR, "nvme_get_features_temp_thresh (%d)\n", ret);
+				goto out;
+			}
+#if 1
+			args.csi = !args.csi;
 			ret = nvme_get_features_power_mgmt(&args, NVME_GET_FEATURES_SEL_CURRENT);
 			if (ret) {
 				main_trace(ERROR, "nvme_get_features_power_mgmt (%d)\n", ret);
@@ -689,6 +720,42 @@ int main(int argc, char *argv[])
 			ret = nvme_identify_ctrl(&args);
 			if (ret) {
 				main_trace(ERROR, "nvme_identify_ctrl (%d)\n", ret);
+				goto out;
+			}
+#endif
+			args.csi = !args.csi;
+			ret = nvme_get_log_smart(&args, NVME_NSID_ALL, true);
+			if (ret) {
+				main_trace(ERROR, "nvme_get_log_smart (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_subsystem_health_status_poll(&args, true);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_subsystem_health_status_poll (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_controller_health_status_poll(&args, true);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_controller_health_status_poll (%d)\n", ret);
+				goto out;
+			}
+
+			tt.value = 0x189;
+			args.csi = !args.csi;
+			ret = nvme_set_features_temp_thresh(&args, tt.value, 0);
+			if (ret) {
+				main_trace(ERROR, "nvme_set_features_temp_thresh (%d)\n", ret);
+				goto out;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_features_temp_thresh(&args, NVME_GET_FEATURES_SEL_CURRENT);
+			if (ret) {
+				main_trace(ERROR, "nvme_get_features_temp_thresh (%d)\n", ret);
 				goto out;
 			}
 
@@ -712,7 +779,7 @@ int main(int argc, char *argv[])
 				main_trace(ERROR, "nvme_mi_mi_controller_health_status_poll (%d)\n", ret);
 				goto out;
 			}
-
+#if 1
 			args.csi = !args.csi;
 			union nvme_mi_nmd0 nmd0 = {.value = 0,};
 			union nvme_mi_nmd1 nmd1 = {.value = 0,};
@@ -914,7 +981,7 @@ int main(int argc, char *argv[])
 				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
 				goto out;
 			}
-
+#endif
 			printf("Round #%d done\n", ++count);
 #ifdef WIN32
 			Sleep(1000);

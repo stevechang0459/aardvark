@@ -481,6 +481,35 @@ union nvme_mi_adm_get_features {
 	uint8_t raw_data[20];
 };
 
+union set_feat_cdw10 {
+	struct {
+		uint32_t fid  : 8;
+		uint32_t rsvd : 23;
+		uint32_t sv   : 1;
+	};
+	uint32_t value;
+};
+
+union set_feat_cdw14 {
+	struct {
+		uint32_t uuid_index : 7;
+		uint32_t rsvd       : 25;
+	};
+	uint32_t value;
+};
+
+union nvme_mi_adm_set_features {
+	struct {
+
+		union set_feat_cdw10 cdw10;
+		uint32_t cdw11;
+		uint32_t cdw12;
+		uint32_t cdw13;
+		union set_feat_cdw14 cdw14;
+	};
+	uint8_t raw_data[20];
+};
+
 /**
  * NVMe Admin Command Request Format (without MCTP Message Header, Request Data,
  * and MIC)
@@ -523,6 +552,7 @@ struct nvme_mi_adm_req_dw {
 		union nvme_mi_adm_get_log_page_dw get_log_page;
 		union nvme_mi_adm_identify identify;
 		union nvme_mi_adm_get_features get_feat;
+		union nvme_mi_adm_set_features set_feat;
 		struct {
 			uint32_t sqedw10;
 			uint32_t sqedw11;

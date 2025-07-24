@@ -479,9 +479,9 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 	if (!nvme_mi_ctx.req_sent)
 		return 0;
 
-	// if (size < 256) {
-	//      print_buf(msg, size, "Response Message");
-	// }
+	if (size < 256) {
+	     print_buf(msg, size, "Response Message");
+	}
 	nvme_mi_ctx.req_sent = 0;
 
 	const union nvme_mi_res_msg *res_msg = msg;
@@ -612,9 +612,9 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 
 	case NVME_MI_MT_ADMIN: {
 		struct nvme_mi_adm_res_dw *res_data = (void *)res_msg->res_data;
-		printf("CQE Dword 0                 : %d\n", res_data->cqedw0);
-		printf("CQE Dword 1                 : %d\n", res_data->cqedw1);
-		printf("CQE Dword 3                 : %d\n", res_data->cqedw3);
+		printf("CQE Dword 0                 : %08x\n", res_data->cqedw0);
+		printf("CQE Dword 1                 : %08x\n", res_data->cqedw1);
+		printf("CQE Dword 3                 : %08x\n", res_data->cqedw3);
 		void *buf = (void *)res_msg->res_data + sizeof(struct nvme_mi_adm_res_dw);
 		switch (nvme_mi_ctx.opc) {
 		case nvme_admin_get_log_page:
