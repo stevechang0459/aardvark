@@ -11,5 +11,7 @@ void nvme_show_get_features(uint32_t cqedw0);
 int nvme_get_log_smart(struct aa_args *args, uint32_t nsid, bool rae);
 int nvme_identify_ctrl(struct aa_args *args);
 int nvme_get_features_power_mgmt(struct aa_args *args, enum nvme_get_features_sel sel);
+int nvme_get_features_temp_thresh(struct aa_args *args, enum nvme_get_features_sel sel);
+int nvme_set_features_temp_thresh(struct aa_args *args, uint32_t val, bool sv);
 
 #endif // NVME_CMD_H

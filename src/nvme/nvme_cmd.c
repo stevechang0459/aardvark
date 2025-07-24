@@ -214,7 +214,8 @@ void nvme_show_identify(const struct nvme_id_ctrl *id_ctrl)
 void nvme_show_get_features(uint32_t cqedw0)
 {
 	const char *fid[256] = {
-		[NVME_FEAT_FID_POWER_MGMT] = "Power Management",
+		[NVME_FEAT_FID_TEMP_THRESH] = "Temperature Threshold",
+		[NVME_FEAT_FID_POWER_MGMT]  = "Power Management",
 	};
 	printf("fid                         : %x (%s)\n", nvme_cmd_ctx.fid, fid[nvme_cmd_ctx.fid]);
 	const char *sel[8] = {
@@ -344,4 +345,42 @@ int nvme_get_features(struct aa_args *args, enum nvme_features_id fid, enum nvme
 int nvme_get_features_power_mgmt(struct aa_args *args, enum nvme_get_features_sel sel)
 {
 	return nvme_get_features(args, NVME_FEAT_FID_POWER_MGMT, sel);
+}
+
+int nvme_get_features_temp_thresh(struct aa_args *args, enum nvme_get_features_sel sel)
+{
+	return nvme_get_features(args, NVME_FEAT_FID_TEMP_THRESH, sel);
+}
+
+int nvme_set_features(struct aa_args *args, enum nvme_features_id fid, uint32_t cdw11, bool sv)
+{
+	union nvme_mi_msg *msg = malloc(sizeof(*msg));
+	memset(msg, 0, sizeof(*msg));
+	struct nvme_mi_adm_req_dw *req_data = (void *)msg->msg_data;
+
+	req_data->opc                       = nvme_admin_set_features;
+	req_data->nsid                      = NVME_NSID_NONE;
+	req_data->set_feat.cdw10.fid        = fid;
+	req_data->set_feat.cdw10.sv         = sv;
+	req_data->set_feat.cdw11            = cdw11;
+	req_data->set_feat.cdw14.uuid_index = NVME_UUID_NONE;
+
+	nvme_cmd_ctx.opc = req_data->opc;
+	nvme_cmd_ctx.fid = fid;
+
+	// if (verbose)
+	//      print_buf(req_data, sizeof(*req_data), "req_data");
+
+	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg, sizeof(*req_data));
+	if (ret < 0)
+		nvme_trace(ERROR, "nvme_mi_send_admin_command failed (%d)\n", ret);
+
+	free(msg);
+
+	return ret;
+}
+
+int nvme_set_features_temp_thresh(struct aa_args *args, uint32_t val, bool sv)
+{
+	return nvme_set_features(args, NVME_FEAT_FID_TEMP_THRESH, val, sv);
 }
