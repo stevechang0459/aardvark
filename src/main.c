@@ -212,6 +212,16 @@ int main(int argc, char *argv[])
 		printf("%d,%s\n", strlen(arg), arg);
 	}
 #endif
+	#include "crc8.h"
+	u8 data[2];
+	data[0] = 0xC2;
+	data[1] = 0x02;
+	printf("crc8:%x\n", crc8(data, sizeof(data)));
+	data[0] = 0x03;
+	data[1] = 0xC2;
+	printf("crc8:%x\n", crc8(data, sizeof(data)));
+
+	// exit(0);
 
 	Aardvark handle = 0;
 	char *end, *bit_rate_opt = NULL, *host_addr_opt = NULL;
