@@ -5,6 +5,7 @@
 OBJS = $(addprefix $(OBJDIR)/,$(SRCS:.$(C_FILE_EXT)=.o))
 ASMS = $(addprefix $(ASMDIR)/,$(SRCS:.$(C_FILE_EXT)=.s))
 DEPS = $(addprefix $(OBJDIR)/,$(SRCS:.$(C_FILE_EXT)=.$(C_FILE_EXT).d))
+LSTS = $(addprefix $(LSTDIR)/,$(SRCS:.$(C_FILE_EXT)=.lst))
 
 # C_INCDIRS = $(foreach dir,$(MODULE_INCLUDES),$(PROJDIR)/$(dir))
 
@@ -41,7 +42,7 @@ ARFLAGS = \
 .PHONY: all
 all: $(LIBDIR)/$(LIBNAME)
 
-$(LIBDIR)/$(LIBNAME): $(ASMS) $(OBJS)
+$(LIBDIR)/$(LIBNAME): $(ASMS) $(OBJS) $(LSTS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
 ###
@@ -75,6 +76,18 @@ $(ASMDIR):
 	mkdir $@
 
 ###
+.PHONY: listing
+listing: $(LSTS)
+
+$(LSTS): | $(LSTDIR)
+
+$(LSTDIR)/%.lst : $(OBJDIR)/%.o
+	objdump -S -d -r $< > $@
+
+$(LSTDIR):
+	mkdir $@
+
+###
 .PHONY: depall
 depall: | $(OBJDIR)
 	$(CC) $(DEFINES) $(CFLAGS) -M $(SRCS) > $(OBJDIR)/depend.d
@@ -85,6 +98,7 @@ depall: | $(OBJDIR)
 clean:
 	rm -rf $(OBJDIR)
 	rm -rf $(ASMDIR)
+	rm -rf $(LSTDIR)
 
 .PHONY: objclean
 objclean:

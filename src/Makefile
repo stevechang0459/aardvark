@@ -20,8 +20,4 @@ INCLUDE = \
 
 SRCS = $(wildcard *.$(C_FILE_EXT))
 
-OBJDIR = obj
-
-ASMDIR = asm
-
 include $(MAKE_RULES)

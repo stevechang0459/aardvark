@@ -15,6 +15,9 @@ SRCDIR 	= $(PROJDIR)/src
 LIBDIR	= $(PROJDIR)/lib
 BINDIR 	= $(PROJDIR)/bin
 DLLDIR  = $(PROJDIR)/dll
+export OBJDIR = obj
+export ASMDIR = asm
+export LSTDIR = list
 
 SUBDIR = \
 	src \
@@ -107,11 +110,11 @@ LIBS = \
 LDLIBS = $(foreach lib,$(LIBS),-l$(lib)) -lm # -lpthread	# <-- Do not change this order.
 
 ifeq ($(CC),gcc)
-C_FILE_EXT   = c
-CPP_FILE_EXT = cpp
+export C_FILE_EXT   = c
+export CPP_FILE_EXT = cpp
 else
-C_FILE_EXT   = cpp
-CPP_FILE_EXT = cpp
+export C_FILE_EXT   = cpp
+export CPP_FILE_EXT = cpp
 endif
 
 export BINNAME
@@ -125,7 +128,6 @@ export EXTERN_INCLUDE
 export CC AR
 export MAKE_RULES
 export OSFLAG
-export C_FILE_EXT
 
 .PHONY: all
 all:
