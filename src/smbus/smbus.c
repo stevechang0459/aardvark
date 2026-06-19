@@ -276,7 +276,7 @@ int smbus_write_file(Aardvark handle, u8 slv_addr, u8 cmd_code, const char *file
 	if (!file) {
 		perror("fopen");
 		ret = -SMBUS_ERROR;
-		goto out;
+		goto exit;
 	}
 
 	while (!feof(file)) {
@@ -326,7 +326,7 @@ cleanup:
 	fclose(file);
 	if (num_bytes)
 		dump_packet(data, num_bytes + pec_flag, "Data written to device:");
-out:
+exit:
 	return ret;
 }
 
@@ -560,7 +560,7 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 	if (status == AA_ASYNC_NO_DATA) {
 		smbus_trace(INFO, "no data available\n");
 		ret = -SMBUS_SLV_NO_AVAILABLE_DATA;
-		goto out;
+		goto exit;
 	}
 
 	// Loop until aa_async_poll times out
@@ -580,7 +580,7 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 			if (status) {
 				smbus_trace(ERROR, "aa_i2c_slave_read_ext (%d)\n", status);
 				ret = -SMBUS_SLV_READ_FAILED;
-				goto out;
+				goto exit;
 			}
 
 			data[0] = slv_addr << 1 | I2C_WRITE;
@@ -598,7 +598,7 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 				if (pec != 0) {
 					smbus_trace(ERROR, "pec error (%d)\n", pec);
 					ret = -SMBUS_PEC_ERR;
-					goto out;
+					goto exit;
 				}
 			}
 
@@ -617,7 +617,7 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 			if (status) {
 				smbus_trace(ERROR, "aa_i2c_slave_write_stats_ext (%d)\n", status);
 				ret = -SMBUS_SLV_WRITE_FAILED;
-				goto out;
+				goto exit;
 			}
 
 			if (verbose) {
@@ -629,7 +629,7 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 		} else if (status == AA_ASYNC_SPI) {
 			smbus_trace(ERROR, "non-i2c asynchronous message is pending\n");
 			ret = -SMBUS_SLV_RECV_NON_I2C_DATA;
-			goto out;
+			goto exit;
 		}
 
 		// Use aa_async_poll to wait for the next transaction
@@ -643,7 +643,7 @@ int smbus_slave_poll(Aardvark handle, int timeout_ms, bool pec_flag,
 
 	ret = SMBUS_SUCCESS;
 
-out:
+exit:
 	return ret;
 }
 
@@ -670,7 +670,7 @@ int smbus_slave_poll_2(Aardvark handle, int timeout_ms, bool pec_flag,
 		if (status) {
 			smbus_trace(ERROR, "aa_i2c_slave_read_ext (%d)\n", status);
 			ret = -SMBUS_SLV_READ_FAILED;
-			goto out;
+			goto exit;
 		}
 
 		data[0] = slv_addr << 1 | I2C_WRITE;
@@ -687,7 +687,7 @@ int smbus_slave_poll_2(Aardvark handle, int timeout_ms, bool pec_flag,
 			if (pec != 0) {
 				smbus_trace(ERROR, "pec error (%d)\n", pec);
 				ret = -SMBUS_PEC_ERR;
-				goto out;
+				goto exit;
 			}
 		}
 
@@ -706,7 +706,7 @@ int smbus_slave_poll_2(Aardvark handle, int timeout_ms, bool pec_flag,
 		if (status) {
 			smbus_trace(ERROR, "aa_i2c_slave_write_stats_ext failed (%d)\n", status);
 			ret = -SMBUS_SLV_WRITE_FAILED;
-			goto out;
+			goto exit;
 		}
 
 		if (verbose) {
@@ -716,12 +716,12 @@ int smbus_slave_poll_2(Aardvark handle, int timeout_ms, bool pec_flag,
 	} else if (status == AA_ASYNC_SPI) {
 		smbus_trace(ERROR, "non-i2c asynchronous message is pending\n");
 		ret = -SMBUS_SLV_RECV_NON_I2C_DATA;
-		goto out;
+		goto exit;
 	}
 
 	ret = SMBUS_SUCCESS;
 
-out:
+exit:
 	return ret;
 }
 

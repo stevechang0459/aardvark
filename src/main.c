@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
 
 	bit_rate = parse_bit_rate(bit_rate_opt);
 	if (bit_rate < 0)
-		goto out;
+		goto exit;
 
 	// Setup the bit rate
 	real_bit_rate = aa_i2c_bitrate(handle, bit_rate);
@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto out;
+			goto exit;
 
 		uint32_t data = strtoul(argv[optind + 3], &end, 0);
 		if (*end || errno == -ERANGE) {
@@ -393,11 +393,11 @@ int main(int argc, char *argv[])
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto out;
+			goto exit;
 
 		cmd_code = parse_cmd_code(argv[optind + 3]);
 		if (cmd_code < 0)
-			goto out;
+			goto exit;
 
 		uint64_t max = 0;
 		switch (func_idx) {
@@ -450,11 +450,11 @@ int main(int argc, char *argv[])
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto out;
+			goto exit;
 
 		cmd_code = parse_cmd_code(argv[optind + 3]);
 		if (cmd_code < 0)
-			goto out;
+			goto exit;
 
 		int byte_cnt, value;
 		for (byte_cnt = 0; byte_cnt < argc - (optind + 4); byte_cnt++) {
@@ -496,7 +496,7 @@ int main(int argc, char *argv[])
 
 			slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 			if (slv_addr < 0)
-				goto out;
+				goto exit;
 		} else {
 			if (check_argc_range(argc, optind + 2, optind + 2))
 				main_exit(EXIT_FAILURE, handle, func_idx, NULL);
@@ -519,7 +519,7 @@ int main(int argc, char *argv[])
 
 			slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 			if (slv_addr < 0)
-				goto out;
+				goto exit;
 		} else {
 			if (check_argc_range(argc, optind + 2, optind + 2))
 				main_exit(EXIT_FAILURE, handle, func_idx, NULL);
@@ -541,12 +541,12 @@ int main(int argc, char *argv[])
 			value = strtol(argv[byte_cnt + optind + 2], &end, 0);
 			if (*end || value < 0) {
 				main_trace(ERROR, "invalid data value '%s'\n", argv[byte_cnt + optind + 2]);
-				goto out;
+				goto exit;
 			}
 
 			if (value > 0xff) {
 				main_trace(ERROR, "data value '%s' out of range\n", argv[byte_cnt + optind + 2]);
-				goto out;
+				goto exit;
 			}
 
 			udid.data[byte_cnt] = value;
@@ -554,12 +554,12 @@ int main(int argc, char *argv[])
 
 		slv_addr = parse_i2c_address(argv[byte_cnt + optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto out;
+			goto exit;
 
 		int ret = smbus_arp_cmd_assign_address(handle, &udid, slv_addr, pec);
 		if (ret) {
 			main_trace(ERROR, "smbus_arp_cmd_assign_address (%d)\n", ret);
-			goto out;
+			goto exit;
 		}
 
 		break;
@@ -570,18 +570,18 @@ int main(int argc, char *argv[])
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto out;
+			goto exit;
 
 		cmd_code = parse_cmd_code(argv[optind + 3]);
 		if (cmd_code < 0)
-			goto out;
+			goto exit;
 
 		file_name = argv[optind + 4];
 
 		int ret = smbus_write_file(handle, slv_addr, cmd_code, file_name, pec);
 		if (ret) {
 			main_trace(ERROR, "smbus_write_file (%d)\n", ret);
-			goto out;
+			goto exit;
 		}
 
 		break;
@@ -598,7 +598,7 @@ int main(int argc, char *argv[])
 		if (i2c_slave_mode) {
 			host_addr = parse_i2c_address(host_addr_opt, all_addr);
 			if (host_addr < 0)
-				goto out;
+				goto exit;
 		} else
 			host_addr = SMBUS_ADDR_IPMI_BMC;
 
@@ -606,31 +606,31 @@ int main(int argc, char *argv[])
 
 		slv_addr = parse_i2c_address(argv[optind + 2], all_addr);
 		if (slv_addr < 0)
-			goto out;
+			goto exit;
 
 		owner_eid = parse_eid(argv[optind + 3]);
 		if (owner_eid < 0 || owner_eid < 8) {
 			main_trace(ERROR, "wrong owner_eid (%d)\n", owner_eid);
-			goto out;
+			goto exit;
 		}
 
 		tar_eid = parse_eid(argv[optind + 4]);
 		if (tar_eid < 0 || tar_eid < 8 || owner_eid == tar_eid) {
 			main_trace(ERROR, "wrong tar_eid (%d,%d)\n", owner_eid, tar_eid);
-			goto out;
+			goto exit;
 		}
 
 		main_trace(INFO, "eid (%d,%d)\n", owner_eid, tar_eid);
 		ret = smbus_arp_cmd_prepare_to_arp(handle, pec);
 		if (ret) {
 			main_trace(ERROR, "smbus_arp_cmd_prepare_to_arp (%d)\n", ret);
-			goto out;
+			goto exit;
 		}
 
 		ret = smbus_arp_cmd_get_udid(handle, &udid, slv_addr, 0, pec);
 		if (ret) {
 			main_trace(ERROR, "smbus_arp_cmd_get_udid (%d)\n", ret);
-			goto out;
+			goto exit;
 		}
 
 		reverse(&udid, sizeof(udid));
@@ -640,13 +640,13 @@ int main(int argc, char *argv[])
 		ret = smbus_arp_cmd_assign_address(handle, &udid, slv_addr, pec);
 		if (ret) {
 			main_trace(ERROR, "smbus_arp_cmd_assign_address (%d)\n", ret);
-			goto out;
+			goto exit;
 		}
 
 		ret = smbus_arp_cmd_get_udid(handle, &udid, slv_addr, 1, pec);
 		if (ret) {
 			main_trace(ERROR, "smbus_arp_cmd_get_udid (%d)\n", ret);
-			goto out;
+			goto exit;
 		}
 
 		reverse(&udid, sizeof(udid));
@@ -659,19 +659,19 @@ int main(int argc, char *argv[])
 		                MCTP_BASELINE_TRAN_UNIT_SIZE, pec);
 		if (ret) {
 			main_trace(ERROR, "mctp_init (%d)\n", ret);
-			goto out;
+			goto exit;
 		}
 
 		ret = mctp_message_set_eid(slv_addr, EID_NULL_DST, SET_EID, tar_eid, 1, 0, verbose);
 		if (ret) {
 			main_trace(ERROR, "mctp_message_set_eid (%d)\n", ret);
-			goto out;
+			goto exit;
 		}
 
 		ret = smbus_slave_poll(handle, 100, pec, mctp_receive_packet_handle, verbose);
 		if (ret && ret != 0xFF) {
 			main_trace(ERROR, "smbus_slave_poll (%d)\n", ret);
-			goto out;
+			goto exit;
 		}
 
 #if (!CONFIG_AA_MULTI_THREAD)
@@ -709,49 +709,49 @@ int main(int argc, char *argv[])
 			ret = nvme_set_features_temp_thresh(&args, tt.value, 0);
 			if (ret) {
 				main_trace(ERROR, "nvme_set_features_temp_thresh (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_get_features_temp_thresh(&args, NVME_GET_FEATURES_SEL_CURRENT);
 			if (ret) {
 				main_trace(ERROR, "nvme_get_features_temp_thresh (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 #if 1
 			args.csi = !args.csi;
 			ret = nvme_get_features_power_mgmt(&args, NVME_GET_FEATURES_SEL_CURRENT);
 			if (ret) {
 				main_trace(ERROR, "nvme_get_features_power_mgmt (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_identify_ctrl(&args);
 			if (ret) {
 				main_trace(ERROR, "nvme_identify_ctrl (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 #endif
 			args.csi = !args.csi;
 			ret = nvme_get_log_smart(&args, NVME_NSID_ALL, true);
 			if (ret) {
 				main_trace(ERROR, "nvme_get_log_smart (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_subsystem_health_status_poll(&args, true);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_subsystem_health_status_poll (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_controller_health_status_poll(&args, true);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_controller_health_status_poll (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			tt.value = 0x189;
@@ -759,35 +759,35 @@ int main(int argc, char *argv[])
 			ret = nvme_set_features_temp_thresh(&args, tt.value, 0);
 			if (ret) {
 				main_trace(ERROR, "nvme_set_features_temp_thresh (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_get_features_temp_thresh(&args, NVME_GET_FEATURES_SEL_CURRENT);
 			if (ret) {
 				main_trace(ERROR, "nvme_get_features_temp_thresh (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_get_log_smart(&args, NVME_NSID_ALL, true);
 			if (ret) {
 				main_trace(ERROR, "nvme_get_log_smart (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_subsystem_health_status_poll(&args, true);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_subsystem_health_status_poll (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_controller_health_status_poll(&args, true);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_controller_health_status_poll (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 #if 1
 			args.csi = !args.csi;
@@ -796,49 +796,49 @@ int main(int argc, char *argv[])
 			ret = nvme_mi_mi_config_get(&args, nmd0, nmd1);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_get_sif (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_config_set(&args, nmd0, nmd1);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_get_sif (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_config_get_sif(&args);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_get_sif (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_config_get_mtus(&args);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_get_mtus (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_config_get_hsc(&args);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_get_hsc (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_config_set_sif(&args, NVME_MI_PORT_ID_SMBUS, SMBUS_FREQ_400KHZ);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_set_sif (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_config_set_sif(&args, NVME_MI_PORT_ID_PCIE, SMBUS_FREQ_100KHZ);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_set_sif (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
@@ -848,7 +848,7 @@ int main(int argc, char *argv[])
 			ret = nvme_mi_mi_config_set_hsc(&args, hsc);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_set_hsc (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
@@ -858,91 +858,91 @@ int main(int argc, char *argv[])
 			ret = nvme_mi_mi_config_set_mtus(&args, NVME_MI_PORT_ID_SMBUS, mtus);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_set_mtus (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_config_set_mtus(&args, NVME_MI_PORT_ID_PCIE, mtus);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_config_set_mtus (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_data_read_nvm_subsys_info(&args);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_data_read_nvm_subsys_info (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_data_read_port_info(&args, NVME_MI_PORT_ID_PCIE);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_data_read_port_info (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_data_read_port_info(&args, NVME_MI_PORT_ID_SMBUS);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_data_read_port_info (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_data_read_ctrl_list(&args, 0);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_data_read_ctrl_list (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_data_read_ctrl_list(&args, 1);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_data_read_ctrl_list (%d)\n", ret);
-				goto out;
-			}
-
-			args.csi = !args.csi;
-			ret = nvme_mi_mi_data_read_ctrl_info(&args, 0);
-			if (ret) {
-				main_trace(ERROR, "nvme_mi_mi_data_read_ctrl_info (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_data_read_ctrl_info(&args, 1);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_data_read_ctrl_info (%d)\n", ret);
-				goto out;
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_mi_mi_data_read_ctrl_info(&args, 0);
+			if (ret) {
+				main_trace(ERROR, "nvme_mi_mi_data_read_ctrl_info (%d)\n", ret);
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_data_read_opt_cmd_support(&args, 0, 0);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_data_read_opt_cmd_support (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_data_read_opt_cmd_support(&args, 1, 0);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_data_read_opt_cmd_support (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_data_read_opt_cmd_support(&args, 0, 1);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_data_read_opt_cmd_support (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_data_read_opt_cmd_support(&args, 1, 1);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_data_read_opt_cmd_support (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			char vpd[256];
@@ -952,35 +952,35 @@ int main(int argc, char *argv[])
 			ret = nvme_mi_mi_vpd_read(&args, 0, 256, vpd);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_vpd_read(&args, 1, 256, vpd);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_vpd_read(&args, 0, 257, vpd);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_vpd_write(&args, 0, 128, vpd);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_vpd_write (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			args.csi = !args.csi;
 			ret = nvme_mi_mi_vpd_write(&args, 128, 128, vpd + 128);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_vpd_write (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 
 			memset(vpd, 0, sizeof(vpd));
@@ -989,7 +989,7 @@ int main(int argc, char *argv[])
 			ret = nvme_mi_mi_vpd_read(&args, 0, 256, vpd);
 			if (ret) {
 				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
-				goto out;
+				goto exit;
 			}
 #endif
 			printf("Round #%d done\n", ++count);
@@ -1154,6 +1154,6 @@ int main(int argc, char *argv[])
 
 	main_exit(EXIT_SUCCESS, handle, -1, NULL);
 
-out:
+exit:
 	main_exit(EXIT_FAILURE, handle, -1, NULL);
 }
