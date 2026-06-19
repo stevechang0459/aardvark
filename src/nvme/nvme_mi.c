@@ -581,6 +581,8 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 		void *buf = (void *)res_msg->res_data;
 		switch (nvme_mi_ctx.opc) {
 		case nvme_mi_mi_opcode_mi_data_read:
+			printf("  Response Data Length: %d\n", res_msg->nmresp.rnmds.resp_data_len);
+			printf("  Status: %d\n", res_msg->nmresp.rnmds.status);
 			nvme_mi_show_mi_data_read(buf);
 			break;
 		case nvme_mi_mi_opcode_subsys_health_status_poll:
