@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 	// argc == optind + 2
 	port = strtol(argv[optind + 1], &end, 0);
 	if (*end || port < 0)
-		main_exit(EXIT_FAILURE, 0, -1, "error: invalid port number\n");
+		main_exit(EXIT_FAILURE, 0, func_idx, "error: invalid port number\n");
 
 	// Open the device
 	handle = aa_open(port);

@@ -223,7 +223,7 @@ void help(int func_idx)
 	case FUNC_IDX_TEST_MCTP:
 		printf(
 		        "Usage: aardvark [-a] [-b <bit-rate>] [-c] [-k] [-p] [-u] %s [port] [slv_addr]\n"
-		        "                [eid]\n\n"
+		        "                [owner_eid] [tar_eid]\n\n"
 		        "  option is one of:\n"
 		        "    -a (all range address)\n"
 		        "    -b <bit-rate> (bit rate)\n"
@@ -233,8 +233,8 @@ void help(int func_idx)
 		        "    -u (pull-up SCL and SDA)\n\n"
 		        "  'port' is an integer to indicate a valid port to use\n\n"
 		        "  'eid' is an integer (0x00, 0x08 - 0xfe)\n\n"
-		        "Example 1 (send test.bin to address 0x1d with command 0xf and pec):\n"
-		        "  # aardvark -kcpu %s 0 0x08\n\n"
+		        "Example:\n"
+		        "  # aardvark -kcpu %s 0 0x1d 0x08 0x09\n\n"
 		        , func_name, func_name
 		);
 		break;
