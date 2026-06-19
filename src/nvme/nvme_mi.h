@@ -37,23 +37,20 @@
 //      NMIMT_MAX,
 // };
 
-enum shutdown_type
-{
-    SHUTDOWN_TYPE_NORMAL = 0,           // Normal NVM Subsystem Shutdown
-    SHUTDOWN_TYPE_ABRUPT = 1,           // Abrupt NVM Subsystem Shutdown
+enum shutdown_type {
+	SHUTDOWN_TYPE_NORMAL = 0,           // Normal NVM Subsystem Shutdown
+	SHUTDOWN_TYPE_ABRUPT = 1,           // Abrupt NVM Subsystem Shutdown
 };
 
-enum nvme_mi_port_id
-{
-    NVME_MI_PORT_ID_PCIE = 0,
-    NVME_MI_PORT_ID_SMBUS = 1,
+enum nvme_mi_port_id {
+	NVME_MI_PORT_ID_PCIE = 0,
+	NVME_MI_PORT_ID_SMBUS = 1,
 };
 
-enum nvme_mi_port_type
-{
-    PORT_TYPE_INACTIVE = 0,
-    PORT_TYPE_PCIE = 1,
-    PORT_TYPE_SMBUS,
+enum nvme_mi_port_type {
+	PORT_TYPE_INACTIVE = 0,
+	PORT_TYPE_PCIE = 1,
+	PORT_TYPE_SMBUS,
 };
 
 enum nvme_mi_msg_ror {

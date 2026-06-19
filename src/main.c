@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
 		printf("%d,%s\n", strlen(arg), arg);
 	}
 #endif
-	#include "crc8.h"
+#include "crc8.h"
 	u8 data[2];
 	data[0] = 0xC2;
 	data[1] = 0x02;
@@ -690,10 +690,8 @@ int main(int argc, char *argv[])
 		while (1) {
 			args.csi = 0;
 
-			union temp_thresh
-			{
-				struct
-				{
+			union temp_thresh {
+				struct {
 					uint32_t tmpth  : 16;
 					uint32_t tmpsel : 4;
 					uint32_t thsel  : 2;

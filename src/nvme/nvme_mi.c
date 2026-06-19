@@ -211,7 +211,7 @@ void nvme_mi_show_mi_data_read(void *buf)
 			printf("PCIe Maximum Link Width     : %dh\n", port_info->pcie.mlw);
 			printf("PCIe Negotiated Link Width  : %d\n", port_info->pcie.nlw);
 			printf("PCIe Port Number            : %d\n", port_info->pcie.pn);
-		} else if (port_info->portt == PORT_TYPE_SMBUS) {			
+		} else if (port_info->portt == PORT_TYPE_SMBUS) {
 			printf("Current VPD SMBus Address   : %02x\n", port_info->smb.vpd_addr);
 			printf("Maximum VPD SMBus Frequency : %dh\n", port_info->smb.mvpd_freq);
 			printf("Current MEP SMBus Address   : %02x\n", port_info->smb.mme_addr);
@@ -403,28 +403,23 @@ void nvme_mi_show_vpd_read(void *buf, uint16_t size)
 	printf("  CHCHK                     : %d\n", vpd_hdr->chchk);
 
 	// TBD
-	if (vpd_hdr->iuaoff)
-	{
-
-	}
-	
-	if (vpd_hdr->ciaoff)
-	{
-		
-	}
-	
-	if (vpd_hdr->biaoff)
-	{
-		
-	}
-	
-	if (vpd_hdr->piaoff)
-	{
+	if (vpd_hdr->iuaoff) {
 
 	}
 
-	if (vpd_hdr->mrioff)
-	{
+	if (vpd_hdr->ciaoff) {
+
+	}
+
+	if (vpd_hdr->biaoff) {
+
+	}
+
+	if (vpd_hdr->piaoff) {
+
+	}
+
+	if (vpd_hdr->mrioff) {
 		static const char *_type[256] = {
 			[0xB] = "NVMe Record Type ID",
 			[0xC] = "NVMe PCIe Port Record Type ID",
@@ -439,7 +434,7 @@ void nvme_mi_show_vpd_read(void *buf, uint16_t size)
 		printf("  Header Checksum           : %d\n", vpd_mr->hchksum);
 		printf("  NMRAVN                    : %d\n", vpd_mr->nmra.nmravn);
 		printf("  Form Factor               : %d\n", vpd_mr->nmra.ff);
-		
+
 		vpd_mr = (void *)vpd_mr + 5 + sizeof(struct nvme_mi_vpd_mra);
 		printf("NVMe PCIe Port MultiRecord Area\n");
 		printf("  Type                      : %d (%s)\n", vpd_mr->type, _type[vpd_mr->type]);
@@ -455,7 +450,7 @@ void nvme_mi_show_vpd_read(void *buf, uint16_t size)
 		printf("  MCTP Support              : %d\n", vpd_mr->ppmra.mctp);
 		printf("  Ref Clk Capability        : %d\n", vpd_mr->ppmra.refccap);
 		printf("  Port Identifier           : %d\n", vpd_mr->ppmra.pi);
-		
+
 		vpd_mr = (void *)vpd_mr + 5 + sizeof(struct nvme_mi_vpd_ppmra);
 		printf("Topology MultiRecord Area\n");
 		printf("  Type                      : %d (%s)\n", vpd_mr->type, _type[vpd_mr->type]);
@@ -480,7 +475,7 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 		return 0;
 
 	if (size < 256) {
-	     print_buf(msg, size, "Response Message");
+		print_buf(msg, size, "Response Message");
 	}
 	nvme_mi_ctx.req_sent = 0;
 
