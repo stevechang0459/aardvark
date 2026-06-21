@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <assert.h>
 
 /**
  * DSP0235, 7.6 Maximum message size
@@ -320,7 +321,7 @@ union nvme_mi_resp {
 union nvme_mi_msg {
 	struct {
 		union nvme_mi_msg_header nmh;
-		uint8_t msg_data[NVME_MI_MSG_SIZE - sizeof(union nvme_mi_msg_header)];
+		uint8_t msg_data[];
 	};
 	uint8_t raw_data[NVME_MI_MSG_SIZE];
 };
@@ -336,10 +337,12 @@ union nvme_mi_req_msg {
 		uint8_t rsvd[3];
 		union nvme_mi_nmd0 nmd0;        // NVMe Management Dword 0 (NMD0)
 		union nvme_mi_nmd1 nmd1;        // NVMe Management Dword 1 (NMD1)
-		uint8_t req_data[NVME_MI_MSG_SIZE - sizeof(union nvme_mi_req_dw)];
+		uint8_t req_data[];
 	};
 	uint8_t raw_data[NVME_MI_MSG_SIZE];
 };
+
+static_assert(sizeof(union nvme_mi_req_msg) == NVME_MI_MSG_SIZE, "nvme_mi_req_msg size mismatch");
 
 /**
  * NVMe-MI Command Response Message Format (implicitly include MIC)
@@ -348,10 +351,12 @@ union nvme_mi_res_msg {
 	struct {
 		union nvme_mi_msg_header nmh;   // NVMe-MI Message Header (NMH)
 		union nvme_mi_resp nmresp;      // NVMe Management Response
-		uint8_t res_data[NVME_MI_MSG_SIZE - sizeof(union nvme_mi_msg_header) - sizeof(union nvme_mi_resp)];
+		uint8_t res_data[];
 	};
 	uint8_t raw_data[NVME_MI_MSG_SIZE];
 };
+
+static_assert(sizeof(union nvme_mi_res_msg) == NVME_MI_MSG_SIZE, "nvme_mi_res_msg size mismatch");
 
 // Get Log Page – Command Dword 10
 union get_log_page_cdw10 {
@@ -458,6 +463,14 @@ union get_feat_cdw10 {
 	uint32_t value;
 };
 
+union get_feat_cdw11 {
+	struct {
+		uint32_t gdhm : 1;
+		uint32_t rsvd : 31;
+	};
+	uint32_t value;
+};
+
 union get_feat_cdw14 {
 	struct {
 		uint32_t uuid_index : 7;
@@ -470,7 +483,7 @@ union nvme_mi_adm_get_features {
 	struct {
 
 		union get_feat_cdw10 cdw10;
-		uint32_t rsvd_cdw11;
+		union get_feat_cdw11 cdw11;
 		uint32_t rvsd_cdw12;
 		uint32_t rvsd_cdw13;
 		union get_feat_cdw14 cdw14;
@@ -579,6 +592,21 @@ struct nvme_mi_adm_res_dw {
 		uint32_t cqedw3;
 	};
 };
+
+/**
+ * NVMe Admin Command Request Format
+ */
+union nvme_mi_adm_req_msg {
+	struct {
+		// NVMe-MI Message Header (NMH)
+		union nvme_mi_msg_header nmh;
+		struct nvme_mi_adm_req_dw mi_adm;
+		byte req_data[NVME_MI_MSG_SIZE - sizeof(union nvme_mi_msg_header) - sizeof(struct nvme_mi_adm_req_dw)];
+	};
+	byte raw_data[NVME_MI_MSG_SIZE];
+};
+
+static_assert(sizeof(union nvme_mi_adm_req_msg) == NVME_MI_MSG_SIZE, "nvme_mi_adm_req_msg size mismatch");
 
 /**
  * NVM Subsystem Status (NSS), NVM Subsystem Health Data Structure

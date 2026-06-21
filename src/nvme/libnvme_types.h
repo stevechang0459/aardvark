@@ -12,6 +12,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <assert.h>
 
 // #include <linux/types.h>
 #include "types.h"
@@ -6090,7 +6091,7 @@ struct nvme_metadata_element_desc {
 	__u8    rev;
 	__le16  len;
 	__u8    val[0];
-};
+} __attribute__((packed));
 
 /**
  * struct nvme_host_metadata - Host Metadata Data Structure
@@ -6106,7 +6107,9 @@ struct nvme_host_metadata {
 		struct nvme_metadata_element_desc descs[0];
 		__u8 descs_buf[4094];
 	};
-};
+} __attribute__((packed));
+
+static_assert(sizeof(struct nvme_host_metadata) == 4096, "nvme_host_metadata size mismatch");
 
 /**
  * enum nvme_ctrl_metadata_type - Controller Metadata Element Types
@@ -6135,7 +6138,15 @@ struct nvme_host_metadata {
  */
 enum nvme_ctrl_metadata_type {
 	NVME_CTRL_METADATA_OS_CTRL_NAME         = 0x01,
+	/**
+	 * Operating System Driver Name: The name of the driver in the operating
+	 * system as a UTF-8 string.
+	 */
 	NVME_CTRL_METADATA_OS_DRIVER_NAME       = 0x02,
+	/**
+	 * Operating System Driver Version: The version of the driver in the
+	 * operating system as a UTF-8 string.
+	 */
 	NVME_CTRL_METADATA_OS_DRIVER_VER        = 0x03,
 	NVME_CTRL_METADATA_PRE_BOOT_CTRL_NAME   = 0x04,
 	NVME_CTRL_METADATA_PRE_BOOT_DRIVER_NAME = 0x05,
@@ -6143,12 +6154,32 @@ enum nvme_ctrl_metadata_type {
 	NVME_CTRL_METADATA_SYS_PROC_MODEL       = 0x07,
 	NVME_CTRL_METADATA_CHIPSET_DRV_NAME     = 0x08,
 	NVME_CTRL_METADATA_CHIPSET_DRV_VERSION  = 0x09,
+	/**
+	 * Operating System Name and Build: The operating system name and build
+	 * as a UTF-8 string.
+	 */
 	NVME_CTRL_METADATA_OS_NAME_AND_BUILD    = 0x0a,
+	/**
+	 * System Product Name: The system product name as a UTF-8 string.
+	 */
 	NVME_CTRL_METADATA_SYS_PROD_NAME        = 0x0b,
+	/**
+	 * Firmware Version: The host firmware (e.g., UEFI) version as a UTF-8
+	 * string.
+	 */
 	NVME_CTRL_METADATA_FIRMWARE_VERSION     = 0x0c,
 	NVME_CTRL_METADATA_OS_DRIVER_FILENAME   = 0x0d,
+	/**
+	 * Display Driver Name: The display driver name as a UTF-8 string.
+	 */
 	NVME_CTRL_METADATA_DISPLAY_DRV_NAME     = 0x0e,
 	NVME_CTRL_METADATA_DISPLAY_DRV_VERSION  = 0x0f,
+	/**
+	 * Host-Determined Failure Record: A failure record (e.g., the reason
+	 * the host has flagged a failure for an NVMe Storage Device (refer to
+	 * the NVM Express Management Interface Specification) FRU which may be
+	 * used for failure analysis) as a UTF-8 string.
+	 */
 	NVME_CTRL_METADATA_HOST_DET_FAIL_REC    = 0x10,
 };
 

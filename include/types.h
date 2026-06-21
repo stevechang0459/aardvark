@@ -149,6 +149,8 @@ typedef int ret_code;
 #define likely(x)                       __builtin_expect(!!(x), 1)
 #define unlikely(x)                     __builtin_expect(!!(x), 0)
 
+#define TO_STR(x) #x
+
 enum {
 	FALSE = 0,
 	TRUE = 1

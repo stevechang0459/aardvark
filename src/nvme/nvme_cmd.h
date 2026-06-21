@@ -6,12 +6,18 @@
 
 void nvme_show_log_page(const struct nvme_smart_log *smart_log);
 void nvme_show_identify(const struct nvme_id_ctrl *id_ctrl);
-void nvme_show_get_features(uint32_t cqedw0);
+void nvme_show_get_features(uint32_t cqedw0, void *buf);
 
 int nvme_get_log_smart(struct aa_args *args, uint32_t nsid, bool rae);
 int nvme_identify_ctrl(struct aa_args *args);
 int nvme_get_features_power_mgmt(struct aa_args *args, enum nvme_get_features_sel sel);
 int nvme_get_features_temp_thresh(struct aa_args *args, enum nvme_get_features_sel sel);
 int nvme_set_features_temp_thresh(struct aa_args *args, uint32_t val, bool sv);
+int test_set_feature_controller_metadata(struct aa_args *args);
+int test_set_feature_controller_metadata_2(struct aa_args *args);
+int test_set_feature_controller_metadata_3(struct aa_args *args);
+int nvme_get_feature_enhanced_controller_metadata(struct aa_args *args, enum nvme_get_features_sel sel, uint32_t gdhm);
+int nvme_get_feature_controller_metadata(struct aa_args *args, enum nvme_get_features_sel sel, uint32_t gdhm);
+int nvme_get_feature_namespace_metadata(struct aa_args *args, enum nvme_get_features_sel sel, uint32_t gdhm);
 
 #endif // NVME_CMD_H

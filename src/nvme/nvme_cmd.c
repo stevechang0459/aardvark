@@ -211,20 +211,72 @@ void nvme_show_identify(const struct nvme_id_ctrl *id_ctrl)
 	// printf("vs                          : %x\n", id_ctrl->vs[1024]);
 }
 
-void nvme_show_get_features(uint32_t cqedw0)
+void print_controller_metadata(struct nvme_host_metadata *metadata)
+{
+	printf("  ndesc                     : %x\n", metadata->ndesc);
+	word offset = 0;
+	word parsed_cnt = 0;
+	while (parsed_cnt < metadata->ndesc) {
+		struct nvme_metadata_element_desc *md = (void *)((char *)metadata->descs + offset);
+		static const char *type[] = {
+			[0x00] = "Reserved",
+			[NVME_CTRL_METADATA_OS_CTRL_NAME] = "Operating System Controller Name",
+			[NVME_CTRL_METADATA_OS_DRIVER_NAME] = "Operating System Driver Name",
+			[NVME_CTRL_METADATA_OS_DRIVER_VER] = "Operating System Driver Version",
+			[NVME_CTRL_METADATA_PRE_BOOT_CTRL_NAME] = "Pre-boot Controller Name",
+			[NVME_CTRL_METADATA_PRE_BOOT_DRIVER_NAME] = "Pre-boot Driver Name",
+			[NVME_CTRL_METADATA_PRE_BOOT_DRIVER_VER] = "Pre-boot Driver Version",
+			[NVME_CTRL_METADATA_SYS_PROC_MODEL] = "System Processor Model",
+			[NVME_CTRL_METADATA_CHIPSET_DRV_NAME] = "Chipset Driver Name",
+			[NVME_CTRL_METADATA_CHIPSET_DRV_VERSION] = "Chipset Driver Version",
+			[NVME_CTRL_METADATA_OS_NAME_AND_BUILD] = "Operating System Name and Build",
+			[NVME_CTRL_METADATA_SYS_PROD_NAME] = "System Product Name",
+			[NVME_CTRL_METADATA_FIRMWARE_VERSION] = "Firmware Version",
+			[NVME_CTRL_METADATA_OS_DRIVER_FILENAME] = "Operating System Driver Filename",
+			[NVME_CTRL_METADATA_DISPLAY_DRV_NAME] = "Display Driver Name",
+			[NVME_CTRL_METADATA_DISPLAY_DRV_VERSION] = "Display Driver Version",
+			[NVME_CTRL_METADATA_HOST_DET_FAIL_REC] = "Host-Determined Failure Record",
+			[0x18 ... 0x1F] = "Vendor Specific"
+		};
+		printf("  et                        : %x (%s)\n", md->type, type[md->type]);
+		printf("  er                        : %x\n", md->rev);
+		printf("  elen                      : %d\n", md->len);
+		print_buf(md->val, md->len, "eval:");
+		offset += sizeof(*md) + md->len;
+		parsed_cnt++;
+	}
+}
+void nvme_show_get_features(uint32_t cqedw0, void *buf)
 {
 	const char *fid[256] = {
 		[NVME_FEAT_FID_TEMP_THRESH] = "Temperature Threshold",
-		[NVME_FEAT_FID_POWER_MGMT]  = "Power Management",
+		[NVME_FEAT_FID_POWER_MGMT] = "Power Management",
+		[NVME_FEAT_FID_ENH_CTRL_METADATA] = "Enhanced Controller Metadata",
+		[NVME_FEAT_FID_CTRL_METADATA] = "Controller Metadata",
+		[NVME_FEAT_FID_NS_METADATA]  = "Namespace Metadata",
 	};
 	printf("fid                         : %x (%s)\n", nvme_cmd_ctx.fid, fid[nvme_cmd_ctx.fid]);
 	const char *sel[8] = {
-		[NVME_GET_FEATURES_SEL_CURRENT] = "Current",
-		[NVME_GET_FEATURES_SEL_DEFAULT] = "Default",
-		[NVME_GET_FEATURES_SEL_SAVED] = "Saved",
+		[NVME_GET_FEATURES_SEL_CURRENT]   = "Current",
+		[NVME_GET_FEATURES_SEL_DEFAULT]   = "Default",
+		[NVME_GET_FEATURES_SEL_SAVED]     = "Saved",
 		[NVME_GET_FEATURES_SEL_SUPPORTED] = "Supported Capabilities",
 	};
 	printf("sel                         : %x (%s)\n", nvme_cmd_ctx.sel, sel[nvme_cmd_ctx.sel]);
+
+	if (nvme_cmd_ctx.sel == NVME_GET_FEATURES_SEL_SUPPORTED) {
+		// static const char *select[] = {
+		// 	[0] = "Saveable ",
+		// 	[1] = "NS Specific ",
+		// 	[2] = "Changeable "
+		// };
+		printf("cqedw0                      : %x (Saveable%s NS Specific%s Changeable%s)\n", cqedw0,
+		       (cqedw0 >> 0) & 0x1 ? "+" : "-",
+		       (cqedw0 >> 1) & 0x1 ? "+" : "-",
+		       (cqedw0 >> 2) & 0x1 ? "+" : "-");
+		return;
+	}
+
 	switch (nvme_cmd_ctx.fid) {
 	case NVME_FEAT_FID_POWER_MGMT:
 		union power_mgmt_cqedw0 {
@@ -238,6 +290,12 @@ void nvme_show_get_features(uint32_t cqedw0)
 		union power_mgmt_cqedw0 result = {.value = cqedw0};
 		printf("  ps                        : %x\n", result.ps);
 		printf("  wh                        : %x\n", result.wh);
+		break;
+	case NVME_FEAT_FID_ENH_CTRL_METADATA ... NVME_FEAT_FID_CTRL_METADATA:
+		print_controller_metadata(buf);
+		break;
+	case NVME_FEAT_FID_NS_METADATA:
+		// print_controller_metadata();
 		break;
 	}
 }
@@ -314,26 +372,28 @@ int nvme_identify_ctrl(struct aa_args *args)
 	return nvme_identify_cns_nsid(args, NVME_NSID_NONE, NVME_IDENTIFY_CNS_CTRL);
 }
 
-int nvme_get_features(struct aa_args *args, enum nvme_features_id fid, enum nvme_get_features_sel sel)
+int nvme_get_features(struct aa_args *args, enum nvme_features_id fid,
+                      enum nvme_get_features_sel sel, uint32_t cdw11)
 {
 	union nvme_mi_msg *msg = malloc(sizeof(*msg));
 	memset(msg, 0, sizeof(*msg));
-	struct nvme_mi_adm_req_dw *req_data = (void *)msg->msg_data;
+	struct nvme_mi_adm_req_dw *adm_req_dw = (void *)msg->msg_data;
 
-	req_data->opc                       = nvme_admin_get_features;
-	req_data->nsid                      = NVME_NSID_NONE;
-	req_data->get_feat.cdw10.fid        = fid;
-	req_data->get_feat.cdw10.sel        = sel;
-	req_data->get_feat.cdw14.uuid_index = NVME_UUID_NONE;
+	adm_req_dw->opc                       = nvme_admin_get_features;
+	adm_req_dw->nsid                      = NVME_NSID_NONE;
+	adm_req_dw->get_feat.cdw10.fid        = fid;
+	adm_req_dw->get_feat.cdw10.sel        = sel;
+	adm_req_dw->get_feat.cdw11.value      = cdw11;
+	adm_req_dw->get_feat.cdw14.uuid_index = NVME_UUID_NONE;
 
-	nvme_cmd_ctx.opc = req_data->opc;
+	nvme_cmd_ctx.opc = adm_req_dw->opc;
 	nvme_cmd_ctx.fid = fid;
 	nvme_cmd_ctx.sel = sel;
 
-	// if (verbose)
-	//      print_buf(req_data, sizeof(*req_data), "req_data");
+	if (args->verbose)
+		print_buf(adm_req_dw, sizeof(*adm_req_dw), "msg_data");
 
-	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg, sizeof(*req_data));
+	int ret = nvme_mi_send_admin_command(args, adm_req_dw->opc, msg, sizeof(*adm_req_dw));
 	if (ret < 0)
 		nvme_trace(ERROR, "nvme_mi_send_admin_command failed (%d)\n", ret);
 
@@ -344,34 +404,53 @@ int nvme_get_features(struct aa_args *args, enum nvme_features_id fid, enum nvme
 
 int nvme_get_features_power_mgmt(struct aa_args *args, enum nvme_get_features_sel sel)
 {
-	return nvme_get_features(args, NVME_FEAT_FID_POWER_MGMT, sel);
+	return nvme_get_features(args, NVME_FEAT_FID_POWER_MGMT, sel, 0);
 }
 
 int nvme_get_features_temp_thresh(struct aa_args *args, enum nvme_get_features_sel sel)
 {
-	return nvme_get_features(args, NVME_FEAT_FID_TEMP_THRESH, sel);
+	return nvme_get_features(args, NVME_FEAT_FID_TEMP_THRESH, sel, 0);
 }
 
-int nvme_set_features(struct aa_args *args, enum nvme_features_id fid, uint32_t cdw11, bool sv)
+int nvme_get_feature_enhanced_controller_metadata(struct aa_args *args, enum nvme_get_features_sel sel, uint32_t gdhm)
+{
+	return nvme_get_features(args, NVME_FEAT_FID_ENH_CTRL_METADATA, sel, gdhm & 0x1);
+}
+
+int nvme_get_feature_controller_metadata(struct aa_args *args, enum nvme_get_features_sel sel, uint32_t gdhm)
+{
+	return nvme_get_features(args, NVME_FEAT_FID_CTRL_METADATA, sel, gdhm & 0x1);
+}
+
+int nvme_get_feature_namespace_metadata(struct aa_args *args, enum nvme_get_features_sel sel, uint32_t gdhm)
+{
+	return nvme_get_features(args, NVME_FEAT_FID_NS_METADATA, sel, gdhm & 0x1);
+}
+
+int nvme_set_features(struct aa_args *args, enum nvme_features_id fid,
+                      uint32_t cdw11, bool sv, const void *req_data, dword dlen)
 {
 	union nvme_mi_msg *msg = malloc(sizeof(*msg));
 	memset(msg, 0, sizeof(*msg));
-	struct nvme_mi_adm_req_dw *req_data = (void *)msg->msg_data;
+	struct nvme_mi_adm_req_dw *adm_req_dw = (void *)msg->msg_data;
+	dword offset = sizeof(*adm_req_dw);
 
-	req_data->opc                       = nvme_admin_set_features;
-	req_data->nsid                      = NVME_NSID_NONE;
-	req_data->set_feat.cdw10.fid        = fid;
-	req_data->set_feat.cdw10.sv         = sv;
-	req_data->set_feat.cdw11            = cdw11;
-	req_data->set_feat.cdw14.uuid_index = NVME_UUID_NONE;
+	adm_req_dw->opc                       = nvme_admin_set_features;
+	adm_req_dw->nsid                      = NVME_NSID_NONE;
+	adm_req_dw->set_feat.cdw10.fid        = fid;
+	adm_req_dw->set_feat.cdw10.sv         = sv;
+	adm_req_dw->set_feat.cdw11            = cdw11;
+	adm_req_dw->set_feat.cdw14.uuid_index = NVME_UUID_NONE;
 
-	nvme_cmd_ctx.opc = req_data->opc;
+	nvme_cmd_ctx.opc = adm_req_dw->opc;
 	nvme_cmd_ctx.fid = fid;
 
-	// if (verbose)
-	//      print_buf(req_data, sizeof(*req_data), "req_data");
+	memcpy(msg->msg_data + offset, req_data, dlen);
 
-	int ret = nvme_mi_send_admin_command(args, req_data->opc, msg, sizeof(*req_data));
+	if (args->verbose)
+		print_buf(msg->msg_data, offset + dlen, "msg_data");
+
+	int ret = nvme_mi_send_admin_command(args, adm_req_dw->opc, msg, offset + dlen);
 	if (ret < 0)
 		nvme_trace(ERROR, "nvme_mi_send_admin_command failed (%d)\n", ret);
 
@@ -382,5 +461,298 @@ int nvme_set_features(struct aa_args *args, enum nvme_features_id fid, uint32_t 
 
 int nvme_set_features_temp_thresh(struct aa_args *args, uint32_t val, bool sv)
 {
-	return nvme_set_features(args, NVME_FEAT_FID_TEMP_THRESH, val, sv);
+	return nvme_set_features(args, NVME_FEAT_FID_TEMP_THRESH, val, sv, NULL, 0);
+}
+
+/* Define NVMe Controller Metadata Feature ID */
+#define NVME_FEAT_CTRL_METADATA 0x7E
+
+/* The Host Metadata data structure is exactly 4096 bytes */
+#define NVME_METADATA_MAX_SIZE 4096
+
+// Element Action (EA)
+enum element_action {
+	// Add/Update Entry
+	ELE_ACT_ADD_UPDATE = 0x0,
+	// Delete Entry
+	ELE_ACT_DELETE = 0x1,
+};
+
+static_assert(sizeof(struct nvme_metadata_element_desc) == 4, "nvme_metadata_element_desc size mismatch");
+
+int test_set_feature_controller_metadata_3(struct aa_args *args)
+{
+	uint8_t metadata[sizeof(struct nvme_host_metadata)];
+	uint32_t offset = 0;
+	int ret;
+
+	/**
+	 * Step 1: Initialize the entire 4KB buffer to zero.
+	 * The NVMe specification requires that unused space after the valid
+	 * descriptors must be zero-padded.
+	 */
+	memset(metadata, 0, sizeof(struct nvme_host_metadata));
+
+	struct nvme_host_metadata *host_meta = (struct nvme_host_metadata *)metadata;
+	host_meta->ndesc = 0; /* We are testing 5 diverse descriptors */
+	offset += 2;
+
+	struct nvme_metadata_element_desc desc;
+
+	/**
+	 * Step 2: Construct descriptor 2 (OS Driver Version - 03h)
+	 */
+	const char *driver_ver = "";
+	uint16_t driver_ver_len = strlen(driver_ver);
+
+	desc.type = NVME_CTRL_METADATA_OS_DRIVER_VER;
+	desc.rev  = 0x01;
+	desc.len  = driver_ver_len;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	host_meta->ndesc++;
+	printf(TO_STR(NVME_CTRL_METADATA_OS_DRIVER_VER) " (%lld): [%d]\n", sizeof(desc) + desc.len, desc.type);
+
+	/**
+	 * Step 3: Construct descriptor 3 (OS Name and Build - 0Ah)
+	 */
+	const char *os_build = "";
+	uint16_t os_build_len = strlen(os_build);
+
+	desc.type = NVME_CTRL_METADATA_OS_NAME_AND_BUILD;
+	desc.rev  = 0x01;
+	desc.len  = os_build_len;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	host_meta->ndesc++;
+	printf(TO_STR(NVME_CTRL_METADATA_OS_NAME_AND_BUILD) " (%lld): [%d]\n", sizeof(desc) + desc.len, desc.type);
+
+	/**
+	 * Step 4: Construct descriptor 3 (OS Name and Build - 0Ah)
+	 */
+	desc.type = NVME_CTRL_METADATA_SYS_PROD_NAME;
+	desc.rev  = 0x01;
+	desc.len  = 0;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	host_meta->ndesc++;
+	printf(TO_STR(NVME_CTRL_METADATA_SYS_PROD_NAME) " (%lld): [%d]\n", sizeof(desc) + desc.len, desc.type);
+
+	/**
+	 * Step 5: Construct descriptor 3 (OS Name and Build - 0Ah)
+	 */
+	desc.type = NVME_CTRL_METADATA_DISPLAY_DRV_NAME;
+	desc.rev  = 0x01;
+	desc.len  = 0;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	host_meta->ndesc++;
+	printf(TO_STR(NVME_CTRL_METADATA_DISPLAY_DRV_NAME)" (%lld): [%d]\n", sizeof(desc) + desc.len, desc.type);
+
+	/**
+	 * Step 6: Issue the Set Features command using the provided API.
+	 */
+	printf("Sending Controller Metadata (%d bytes used out of 4096)...\n", offset);
+	ret = nvme_set_features(args, NVME_FEAT_CTRL_METADATA, (dword)ELE_ACT_DELETE << 13,
+	                        false, metadata, sizeof(struct nvme_host_metadata));
+
+	if (ret == 0) {
+		printf("Controller Metadata set successfully with %d descriptors!\n", host_meta->ndesc);
+	} else {
+		printf("Failed to set Controller Metadata, error code: %d\n", ret);
+	}
+
+	return ret;
+}
+
+int test_set_feature_controller_metadata_2(struct aa_args *args)
+{
+	uint8_t metadata[sizeof(struct nvme_host_metadata)];
+	uint32_t offset = 0;
+	int ret;
+
+	/**
+	 * Step 1: Initialize the entire 4KB buffer to zero.
+	 * The NVMe specification requires that unused space after the valid
+	 * descriptors must be zero-padded.
+	 */
+	memset(metadata, 0, sizeof(struct nvme_host_metadata));
+
+	struct nvme_host_metadata *host_meta = (struct nvme_host_metadata *)metadata;
+	host_meta->ndesc = 0; /* We are testing 5 diverse descriptors */
+	offset += 2;
+
+	struct nvme_metadata_element_desc desc;
+
+	/**
+	 * Step 2: Construct descriptor 2 (OS Driver Version - 03h)
+	 */
+	const char *driver_ver = "v2.0.2-release";
+	uint16_t driver_ver_len = strlen(driver_ver);
+
+	desc.type = NVME_CTRL_METADATA_OS_DRIVER_VER;
+	desc.rev  = 0x01;
+	desc.len  = driver_ver_len;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	memcpy(metadata + offset, driver_ver, driver_ver_len);
+	offset += desc.len;
+	host_meta->ndesc++;
+	printf("Operating System Driver Version (%lld): [%d] %s\n", sizeof(desc) + desc.len, desc.type, driver_ver);
+
+	/**
+	 * Step 3: Construct descriptor 3 (OS Name and Build - 0Ah)
+	 */
+	const char *os_build = "Linux Ubuntu 24.04 (Kernel 7.0.0)";
+	uint16_t os_build_len = strlen(os_build);
+
+	desc.type = NVME_CTRL_METADATA_OS_NAME_AND_BUILD;
+	desc.rev  = 0x01;
+	desc.len  = os_build_len;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	memcpy(metadata + offset, os_build, os_build_len);
+	offset += desc.len;
+	host_meta->ndesc++;
+	printf("Operating System Name and Build (%lld): [%d] %s\n", sizeof(desc) + desc.len, desc.type, os_build);
+
+	/**
+	 * Step 4: Issue the Set Features command using the provided API.
+	 */
+	printf("Sending Controller Metadata (%d bytes used out of 4096)...\n", offset);
+	ret = nvme_set_features(args, NVME_FEAT_CTRL_METADATA, (dword)ELE_ACT_ADD_UPDATE << 13,
+	                        false, metadata, sizeof(struct nvme_host_metadata));
+
+	if (ret == 0) {
+		printf("Controller Metadata set successfully with %d descriptors!\n", host_meta->ndesc);
+	} else {
+		printf("Failed to set Controller Metadata, error code: %d\n", ret);
+	}
+
+	return ret;
+}
+
+int test_set_feature_controller_metadata(struct aa_args *args)
+{
+	uint8_t metadata[sizeof(struct nvme_host_metadata)];
+	uint32_t offset = 0;
+	int ret;
+
+	/**
+	 * Step 1: Initialize the entire 4KB buffer to zero.
+	 * The NVMe specification requires that unused space after the valid
+	 * descriptors must be zero-padded.
+	 */
+	memset(metadata, 0, sizeof(struct nvme_host_metadata));
+
+	struct nvme_host_metadata *host_meta = (struct nvme_host_metadata *)metadata;
+	host_meta->ndesc = 0; /* We are testing 5 diverse descriptors */
+	offset += 2;
+
+	struct nvme_metadata_element_desc desc;
+
+	/**
+	 * Step 2: Construct descriptor 1 (OS Driver Name - 02h)
+	 */
+	const char *driver_name = "Apacer NVMe Driver";
+	uint16_t driver_name_len = strlen(driver_name);
+
+	desc.type = NVME_CTRL_METADATA_OS_DRIVER_NAME;
+	desc.rev  = 0x01;
+	desc.len  = driver_name_len;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	memcpy(metadata + offset, driver_name, driver_name_len);
+	offset += desc.len;
+	host_meta->ndesc++;
+	printf("Operating System Driver Name (%lld): [%d] %s\n", sizeof(desc) + desc.len, desc.type, driver_name);
+
+	/**
+	 * Step 3: Construct descriptor 2 (OS Driver Version - 03h)
+	 */
+	const char *driver_ver = "v2.0.1-beta";
+	uint16_t driver_ver_len = strlen(driver_ver);
+
+	desc.type = NVME_CTRL_METADATA_OS_DRIVER_VER;
+	desc.rev  = 0x01;
+	desc.len  = driver_ver_len;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	memcpy(metadata + offset, driver_ver, driver_ver_len);
+	offset += desc.len;
+	host_meta->ndesc++;
+	printf("Operating System Driver Version (%lld): [%d] %s\n", sizeof(desc) + desc.len, desc.type, driver_ver);
+
+	/**
+	 * Step 4: Construct descriptor 3 (OS Name and Build - 0Ah)
+	 */
+	const char *os_build = "Linux Ubuntu 24.04 (Kernel 6.8.0)";
+	uint16_t os_build_len = strlen(os_build);
+
+	desc.type = NVME_CTRL_METADATA_OS_NAME_AND_BUILD;
+	desc.rev  = 0x01;
+	desc.len  = os_build_len;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	memcpy(metadata + offset, os_build, os_build_len);
+	offset += desc.len;
+	host_meta->ndesc++;
+	printf("Operating System Name and Build (%lld): [%d] %s\n", sizeof(desc) + desc.len, desc.type, os_build);
+	/**
+	 * Step 5: Construct descriptor 4 (Host Firmware Version - 0Ch)
+	 */
+	const char *fw_ver = "UEFI BIOS v1.23";
+	uint16_t fw_ver_len = strlen(fw_ver);
+
+	desc.type = NVME_CTRL_METADATA_FIRMWARE_VERSION;
+	desc.rev  = 0x01;
+	desc.len  = fw_ver_len;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	memcpy(metadata + offset, fw_ver, fw_ver_len);
+	offset += desc.len;
+	host_meta->ndesc++;
+	printf("Firmware Version (%lld): [%d] %s\n", sizeof(desc) + desc.len, desc.type, fw_ver);
+	/**
+	 * Step 6: Construct descriptor 5 (Host-Determined Failure Record - 10h)
+	 * This is useful for injecting a simulated host-side crash context.
+	 */
+	const char *fail_rec = "NVMe link timeout during heavy IO stress test";
+	uint16_t fail_rec_len = strlen(fail_rec);
+
+	desc.type = NVME_CTRL_METADATA_HOST_DET_FAIL_REC;
+	desc.rev  = 0x01;
+	desc.len  = fail_rec_len;
+
+	memcpy(metadata + offset, &desc, sizeof(desc));
+	offset += sizeof(desc);
+	memcpy(metadata + offset, fail_rec, fail_rec_len);
+	offset += desc.len;
+	host_meta->ndesc++;
+	printf("Host-Determined Failure Record (%lld): [%d] %s\n", sizeof(desc) + desc.len, desc.type, fail_rec);
+
+	/**
+	 * Step 7: Issue the Set Features command using the provided API.
+	 */
+	printf("Sending Controller Metadata (%d bytes used out of 4096)...\n", offset);
+	ret = nvme_set_features(args, NVME_FEAT_CTRL_METADATA, (dword)ELE_ACT_ADD_UPDATE << 13,
+	                        false, metadata, sizeof(struct nvme_host_metadata));
+
+	if (ret == 0) {
+		printf("Controller Metadata set successfully with %d descriptors!\n", host_meta->ndesc);
+	} else {
+		printf("Failed to set Controller Metadata, error code: %d\n", ret);
+	}
+
+	return ret;
 }

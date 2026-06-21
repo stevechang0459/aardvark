@@ -689,7 +689,6 @@ int main(int argc, char *argv[])
 		int count = 0;
 		while (1) {
 			args.csi = 0;
-
 			union temp_thresh {
 				struct {
 					uint32_t tmpth  : 16;
@@ -703,6 +702,7 @@ int main(int argc, char *argv[])
 			union temp_thresh tt = {
 				.value = 0x137
 			};
+
 			args.csi = !args.csi;
 			ret = nvme_set_features_temp_thresh(&args, tt.value, 0);
 			if (ret) {
@@ -716,7 +716,7 @@ int main(int argc, char *argv[])
 				main_trace(ERROR, "nvme_get_features_temp_thresh (%d)\n", ret);
 				goto exit;
 			}
-#if 1
+
 			args.csi = !args.csi;
 			ret = nvme_get_features_power_mgmt(&args, NVME_GET_FEATURES_SEL_CURRENT);
 			if (ret) {
@@ -730,7 +730,7 @@ int main(int argc, char *argv[])
 				main_trace(ERROR, "nvme_identify_ctrl (%d)\n", ret);
 				goto exit;
 			}
-#endif
+
 			args.csi = !args.csi;
 			ret = nvme_get_log_smart(&args, NVME_NSID_ALL, true);
 			if (ret) {
@@ -787,7 +787,7 @@ int main(int argc, char *argv[])
 				main_trace(ERROR, "nvme_mi_mi_controller_health_status_poll (%d)\n", ret);
 				goto exit;
 			}
-#if 1
+
 			args.csi = !args.csi;
 			union nvme_mi_nmd0 nmd0 = {.value = 0,};
 			union nvme_mi_nmd1 nmd1 = {.value = 0,};
@@ -989,13 +989,163 @@ int main(int argc, char *argv[])
 				main_trace(ERROR, "nvme_mi_mi_vpd_read (%d)\n", ret);
 				goto exit;
 			}
-#endif
+
+			tt.value = 0x189;
+			args.csi = !args.csi;
+			ret = nvme_set_features_temp_thresh(&args, tt.value, 0);
+			if (ret) {
+				main_trace(ERROR, "nvme_set_features_temp_thresh (%d)\n", ret);
+				goto exit;
+			}
+
+			/**
+			 * Set/Get Feature - Metadata
+			 */
+			args.csi = !args.csi;
+			ret = test_set_feature_controller_metadata(&args);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = test_set_feature_controller_metadata_2(&args);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_CURRENT, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = test_set_feature_controller_metadata_3(&args);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_CURRENT, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = test_set_feature_controller_metadata(&args);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_CURRENT, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = test_set_feature_controller_metadata_3(&args);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_CURRENT, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = test_set_feature_controller_metadata_2(&args);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_CURRENT, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_DEFAULT, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			/**
+			 * Get Feature - Metadata
+			 */
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_DEFAULT, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_SAVED, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_SAVED, 1);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_enhanced_controller_metadata(&args, NVME_GET_FEATURES_SEL_SUPPORTED, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_SUPPORTED, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_namespace_metadata(&args, NVME_GET_FEATURES_SEL_SUPPORTED, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			args.csi = !args.csi;
+			ret = nvme_get_feature_controller_metadata(&args, NVME_GET_FEATURES_SEL_CURRENT, 0);
+			if (ret) {
+				main_trace(ERROR, "test_set_feature_controller_metadata (%d)\n", ret);
+				goto exit;
+			}
+
+			// break;
+
 			printf("Round #%d done\n", ++count);
 #ifdef WIN32
 			Sleep(1000);
 #else
 			usleep(1000 * 1000);
 #endif
+			// break;
 		}
 #else
 		pthread_t t1;

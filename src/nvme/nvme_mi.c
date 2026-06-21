@@ -621,7 +621,9 @@ int nvme_mi_response_message_handle(const union nvme_mi_res_msg *msg, uint16_t s
 			nvme_show_identify(buf);
 			break;
 		case nvme_admin_get_features:
-			nvme_show_get_features(res_data->cqedw0);
+			nvme_show_get_features(res_data->cqedw0, buf);
+			break;
+		case nvme_admin_set_features:
 			break;
 		default:
 			nvme_trace(WARN, "unknown mi opc: %d\n", nvme_mi_ctx.opc);
